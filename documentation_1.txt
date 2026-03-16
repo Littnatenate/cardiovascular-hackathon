@@ -1,4 +1,0 @@
-ai model 101010100 68687676767
-
-extra datasets
-https://www.kaggle.com/datasets/sulianova/cardiovascular-disease-dataset

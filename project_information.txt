@@ -1,0 +1,16 @@
+ai model 101010100 68687676767
+
+extra datasets
+https://www.kaggle.com/datasets/sulianova/cardiovascular-disease-dataset
+
+I think this dataset got good documentation:
+https://www.kaggle.com/datasets/andrewmvd/heart-failure-clinical-data
+
+Dataset terminal download copy paste:
+
+import kagglehub
+
+# Download latest version
+path = kagglehub.dataset_download("andrewmvd/heart-failure-clinical-data")
+
+print("Path to dataset files:", path)
