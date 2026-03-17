@@ -1,7 +1,10 @@
 ai model 101010100 68687676767
 
-extra datasets
+the same as cardio_base.csv
 https://www.kaggle.com/datasets/sulianova/cardiovascular-disease-dataset
+
+some other dataset
+https://www.kaggle.com/datasets/ahiduzzaman28/nhanes-cvd-raw-data-2017-23
 
 I think this dataset got good documentation:
 https://www.kaggle.com/datasets/andrewmvd/heart-failure-clinical-data
