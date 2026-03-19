@@ -1,0 +1,10 @@
+# Backend Requirements
+fastapi
+uvicorn
+pydantic
+openai
+pandas
+pytest
+kagglehub
+numpy
+scikit-learn
