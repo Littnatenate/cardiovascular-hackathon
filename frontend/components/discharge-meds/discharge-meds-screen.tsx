@@ -82,7 +82,6 @@ export function DischargeMedsScreen() {
         patientName={patientData.name} 
         sessionId={patientData.id} 
         step={3} 
-        backRoute="/home-meds" 
       />
 
       <main className="flex-1 px-4 py-4 space-y-4 pb-32">

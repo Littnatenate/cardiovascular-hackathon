@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { AlertCircle, ArrowRight, CalendarDays, X } from "lucide-react"
+import { AlertCircle, ArrowRight, CalendarDays, X, Sparkles } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { dischargeSessions } from "@/lib/mock-data"
+import { SessionTopBar } from "@/components/session-top-bar"
 
 const WARD_OPTIONS = [
   "Ward 5A – General Medicine",
@@ -40,9 +42,23 @@ export function NewSessionForm() {
   const [errors, setErrors] = useState<FormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Auto-focus on the patient name field when the form loads
+  // Auto-focus on the patient name field when the form loads, prefill if session exists
   useEffect(() => {
     patientNameRef.current?.focus()
+    const raw = sessionStorage.getItem('dischargeSession')
+    if (raw) {
+      try {
+        const data = JSON.parse(raw)
+        if (data.patientName) setPatientName(data.patientName)
+        if (data.patientId && data.patientId !== 'N/A') setPatientId(data.patientId)
+        if (data.ward) setWard(data.ward)
+        if (data.bedNumber) setBedNumber(data.bedNumber)
+        if (data.allergies && Array.isArray(data.allergies)) {
+           setAllergies(data.allergies.join(", "))
+           setNoneKnown(data.allergies.length === 0)
+        }
+      } catch (e) {}
+    }
   }, [])
 
   // When "None known" is checked, clear and disable allergy text
@@ -112,25 +128,11 @@ export function NewSessionForm() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top bar */}
-      <header className="bg-primary text-primary-foreground px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-md bg-primary-foreground/20 flex items-center justify-center">
-            <CalendarDays className="w-4 h-4 text-primary-foreground" />
-          </div>
-          <span className="text-sm font-medium tracking-wide uppercase opacity-80">
-            Discharge Counseling
-          </span>
-        </div>
-        <span className="text-sm opacity-60 font-mono tabular-nums">
-          {new Date().toLocaleDateString("en-GB", {
-            weekday: "short",
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-          })}
-        </span>
-      </header>
+      <SessionTopBar 
+        patientName={patientName || "New Patient"}
+        sessionId={patientId || "Pending ID"}
+        step={1}
+      />
 
       {/* Main content */}
       <main className="flex-1 flex items-start justify-center px-4 py-8 md:py-12">

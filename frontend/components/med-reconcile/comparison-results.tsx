@@ -62,8 +62,6 @@ export function ComparisonResults() {
         patientName="Margaret Thompson"
         sessionId="MRN-002847"
         step={5}
-        totalSteps={5}
-        backRoute="/medication-review"
       />
 
       <main className="flex-1 px-4 md:px-6 py-5 max-w-2xl mx-auto w-full space-y-4">

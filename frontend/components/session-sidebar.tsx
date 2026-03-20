@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Check, ClipboardList, Pill, ScanSearch, FileText, FileCheck, Stethoscope } from "lucide-react"
@@ -11,15 +12,33 @@ const SESSION_STEPS = [
   { id: "discharge-meds", label: "Discharge Meds", href: "/discharge-meds", icon: FileText },
   { id: "review", label: "Review", href: "/medication-review", icon: ScanSearch },
   { id: "ai-comparison", label: "AI Results", href: "/ai-comparison", icon: FileCheck },
-  { id: "instructions", label: "Instructions", href: "#", icon: Stethoscope },
+  { id: "instructions", label: "Instructions", href: "/patient-instructions", icon: Stethoscope },
 ]
 
 export function SessionSidebar() {
   const pathname = usePathname()
 
-  // Find current step index
-  const currentIndex = SESSION_STEPS.findIndex(step => pathname.includes(step.href))
+  // Find current step index — use more precise match
+  const currentIndex = SESSION_STEPS.findIndex(step => 
+    step.href !== "#" && (pathname === step.href || (step.href !== "/" && pathname.includes(step.href)))
+  )
   
+  const [maxIndex, setMaxIndex] = useState(0)
+
+  useEffect(() => {
+    if (currentIndex > -1) {
+      const stored = sessionStorage.getItem('sessionMaxStep')
+      const currentMax = stored ? parseInt(stored, 10) : 0
+      
+      if (currentIndex > currentMax) {
+        sessionStorage.setItem('sessionMaxStep', currentIndex.toString())
+        setMaxIndex(currentIndex)
+      } else {
+        setMaxIndex(currentMax)
+      }
+    }
+  }, [currentIndex])
+
   return (
     <div className="w-64 flex-shrink-0 border-r border-border bg-card/50 min-h-screen p-6 hidden md:block">
       <div className="mb-8">
@@ -38,8 +57,9 @@ export function SessionSidebar() {
         <ul className="space-y-6">
           {SESSION_STEPS.map((step, index) => {
             const isActive = currentIndex === index
-            const isCompleted = currentIndex > index
-            const isFuture = currentIndex < index
+            const isCompleted = index < maxIndex || (index === 5 && maxIndex === 5 && !isActive)
+            const isAccessible = index <= maxIndex
+            const isFuture = !isAccessible
             const Icon = step.icon
 
             return (
