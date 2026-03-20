@@ -1,0 +1,58 @@
+{
+  "_meta": {
+    "description": "DDInter Code A — Drug-Drug Interaction data for stomach/metabolism-related medications. Flags interactions involving diabetes drugs, PPIs, and GI medications.",
+    "source": "Simplified subset of DDInter database for hackathon demo",
+    "severity_levels": ["low", "moderate", "high", "critical"]
+  },
+  "interactions": [
+    {
+      "drug_a": "metformin",
+      "drug_b": "omeprazole",
+      "severity": "moderate",
+      "effect": "Omeprazole may reduce vitamin B12 absorption, compounding metformin's B12 depletion",
+      "recommendation": "Monitor B12 levels. Consider supplementation if long-term."
+    },
+    {
+      "drug_a": "metformin",
+      "drug_b": "furosemide",
+      "severity": "moderate",
+      "effect": "Furosemide may increase metformin levels; risk of lactic acidosis in renal impairment",
+      "recommendation": "Monitor renal function. Adjust metformin dose as needed."
+    },
+    {
+      "drug_a": "metformin",
+      "drug_b": "prednisolone",
+      "severity": "moderate",
+      "effect": "Corticosteroids raise blood glucose, opposing metformin's effect",
+      "recommendation": "Monitor blood glucose closely. May need temporary insulin."
+    },
+    {
+      "drug_a": "omeprazole",
+      "drug_b": "clopidogrel",
+      "severity": "high",
+      "effect": "Omeprazole significantly reduces clopidogrel's antiplatelet effect",
+      "recommendation": "AVOID this combination. Use pantoprazole instead if PPI needed."
+    },
+    {
+      "drug_a": "omeprazole",
+      "drug_b": "methotrexate",
+      "severity": "high",
+      "effect": "PPI may delay methotrexate elimination, increasing toxicity risk",
+      "recommendation": "Avoid high-dose methotrexate with PPI. Monitor levels."
+    },
+    {
+      "drug_a": "sitagliptin",
+      "drug_b": "furosemide",
+      "severity": "low",
+      "effect": "Minor — furosemide may slightly raise blood glucose",
+      "recommendation": "Routine monitoring sufficient."
+    },
+    {
+      "drug_a": "esomeprazole",
+      "drug_b": "clopidogrel",
+      "severity": "moderate",
+      "effect": "May reduce clopidogrel activation, though less than omeprazole",
+      "recommendation": "Prefer pantoprazole if PPI is required with clopidogrel."
+    }
+  ]
+}

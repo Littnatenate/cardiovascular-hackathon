@@ -1,0 +1,79 @@
+{
+  "_meta": {
+    "description": "DDInter Code B — Drug-Drug Interaction data for blood/cardiovascular-related medications. Flags dangerous combinations involving anticoagulants, antiplatelets, and related drugs.",
+    "source": "Simplified subset of DDInter database for hackathon demo",
+    "severity_levels": ["low", "moderate", "high", "critical"]
+  },
+  "interactions": [
+    {
+      "drug_a": "warfarin",
+      "drug_b": "aspirin",
+      "severity": "high",
+      "effect": "Significantly increased bleeding risk",
+      "recommendation": "Avoid combination unless specifically indicated. Monitor INR closely."
+    },
+    {
+      "drug_a": "warfarin",
+      "drug_b": "enoxaparin",
+      "severity": "critical",
+      "effect": "Dual anticoagulation — very high bleeding risk",
+      "recommendation": "Should not be co-prescribed. Escalate to pharmacist immediately."
+    },
+    {
+      "drug_a": "warfarin",
+      "drug_b": "clopidogrel",
+      "severity": "high",
+      "effect": "Triple antithrombotic risk when combined with aspirin",
+      "recommendation": "Requires specialist review. Limit duration if unavoidable."
+    },
+    {
+      "drug_a": "warfarin",
+      "drug_b": "omeprazole",
+      "severity": "moderate",
+      "effect": "Omeprazole may increase warfarin effect (higher INR)",
+      "recommendation": "Monitor INR. Consider pantoprazole as alternative PPI."
+    },
+    {
+      "drug_a": "aspirin",
+      "drug_b": "enoxaparin",
+      "severity": "high",
+      "effect": "Increased risk of bleeding events",
+      "recommendation": "Use with caution. Ensure clinical indication for both."
+    },
+    {
+      "drug_a": "aspirin",
+      "drug_b": "clopidogrel",
+      "severity": "moderate",
+      "effect": "Dual antiplatelet therapy — increased bleeding risk",
+      "recommendation": "Standard post-stent therapy but monitor for bleeding signs."
+    },
+    {
+      "drug_a": "apixaban",
+      "drug_b": "aspirin",
+      "severity": "high",
+      "effect": "Increased major bleeding risk",
+      "recommendation": "Avoid combination. Review anticoagulation strategy."
+    },
+    {
+      "drug_a": "enoxaparin",
+      "drug_b": "clopidogrel",
+      "severity": "high",
+      "effect": "Increased bleeding risk",
+      "recommendation": "Monitor closely. Short-term use only if required."
+    },
+    {
+      "drug_a": "warfarin",
+      "drug_b": "atorvastatin",
+      "severity": "low",
+      "effect": "Minor increase in warfarin effect possible",
+      "recommendation": "Monitor INR when starting or changing statin dose."
+    },
+    {
+      "drug_a": "spironolactone",
+      "drug_b": "lisinopril",
+      "severity": "moderate",
+      "effect": "Risk of hyperkalemia (high potassium)",
+      "recommendation": "Monitor potassium levels regularly."
+    }
+  ]
+}

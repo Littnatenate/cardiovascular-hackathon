@@ -79,6 +79,11 @@ export function NewSessionForm() {
       createdAt: new Date().toISOString(),
     }
 
+    // Clear previous session data for a clean start
+    localStorage.removeItem("medrecon_home_list")
+    localStorage.removeItem("medrecon_discharge_list")
+    localStorage.removeItem("recon_results")
+
     sessionStorage.setItem("dischargeSession", JSON.stringify(session))
 
     // Navigate to the next step (Home Medication entry)

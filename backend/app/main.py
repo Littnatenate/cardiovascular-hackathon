@@ -15,6 +15,6 @@ app.add_middleware(
 
 app.include_router(med_recon_router, prefix="/api/v1")
 
-@app.get("/")
-async def root():
-    return {"message": "Welcome to the MedSafe Discharge Tool API"}
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

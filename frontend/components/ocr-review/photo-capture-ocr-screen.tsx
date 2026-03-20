@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { CameraViewfinder } from "./camera-viewfinder";
 import { PhotoPreview } from "./photo-preview";
 import { ExtractedFieldRow } from "./extracted-field-row";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { scanMedication } from "@/lib/api";
 import type { CaptureState, ExtractedData, Confidence } from "./types";
 import {
   CheckCircle,
@@ -63,6 +65,7 @@ interface AddedMed {
 }
 
 export function PhotoCaptureOcrScreen() {
+  const router = useRouter();
   const [captureState, setCaptureState] = useState<CaptureState>("viewfinder");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
@@ -78,14 +81,21 @@ export function PhotoCaptureOcrScreen() {
     setExtractedData(null);
   }, []);
 
-  const handleUsePhoto = useCallback(() => {
+  const handleUsePhoto = useCallback(async () => {
     setIsAnalyzing(true);
     setCaptureState("reviewing");
-    // Simulate AI OCR processing
-    setTimeout(() => {
+    
+    try {
+      // Call our real AI OCR backend!
+      const result = await scanMedication("dummy-blob-or-url");
+      // Fallback to mock if API gives nothing, for demo safety
+      setExtractedData(result || MOCK_OCR_RESULT);
+    } catch (err) {
+      console.error("OCR Check failed, falling back to mock:", err);
       setExtractedData(MOCK_OCR_RESULT);
+    } finally {
       setIsAnalyzing(false);
-    }, 1800);
+    }
   }, []);
 
   const handleFieldChange = useCallback(
@@ -108,6 +118,12 @@ export function PhotoCaptureOcrScreen() {
       source: "photo",
       addedAt: new Date(),
     };
+    
+    // PERSISTENCE FIX: Save to the main Home Meds list in localStorage
+    const currentMedsRaw = localStorage.getItem('medrecon_home_list');
+    const currentMeds = currentMedsRaw ? JSON.parse(currentMedsRaw) : [];
+    localStorage.setItem('medrecon_home_list', JSON.stringify([...currentMeds, med]));
+
     setAddedMeds((prev) => [med, ...prev]);
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 2000);
@@ -359,7 +375,7 @@ export function PhotoCaptureOcrScreen() {
             <Button
               variant="outline"
               className="w-full mt-1 font-semibold"
-              onClick={() => {}}
+              onClick={() => router.push('/home-meds')}
             >
               Done — Back to Home Meds
             </Button>

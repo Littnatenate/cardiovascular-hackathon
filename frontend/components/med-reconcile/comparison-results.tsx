@@ -1,20 +1,106 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { MedResult, SummaryCount } from "./types";
+import { useState, useMemo, useEffect } from "react";
+import { MedResult, SummaryCount, MedStatus } from "./types";
 import { SAMPLE_RESULTS } from "./sample-data";
 import { SummaryBar } from "./summary-bar";
 import { MedCard } from "./med-card";
 import { ChevronLeft, ChevronRight, AlertTriangle, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 const SORT_ORDER = ["interaction", "stopped", "changed", "uncertain", "new", "continued"];
 
 export function ComparisonResults() {
-  const [results, setResults] = useState<MedResult[]>(SAMPLE_RESULTS);
+  const router = useRouter();
+  const [results, setResults] = useState<MedResult[]>([]);
+  const [patient, setPatient] = useState<any>(null);
   const [detailsOpen, setDetailsOpen] = useState<string | null>(null);
   const [overrideOpen, setOverrideOpen] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const rawResults = localStorage.getItem('recon_results');
+    const rawPatient = localStorage.getItem('recon_patient');
+    if (rawResults) {
+      const data = JSON.parse(rawResults);
+      setPatient(rawPatient ? JSON.parse(rawPatient) : null);
+      
+      const mapped: MedResult[] = [];
+      
+      // 1. Map Interactions (DDInter)
+      if (data.interactions) {
+        data.interactions.forEach((i: any, idx: number) => {
+          mapped.push({
+            id: `int-${idx}`,
+            status: "interaction",
+            drugName: `${i.drug_a} + ${i.drug_b}`,
+            summary: `${i.severity.toUpperCase()}: ${i.effect}. Recommendation: ${i.recommendation}`,
+            confidence: "high",
+            needsConfirmation: true,
+            patientPrompt: "Our AI detected a possible interaction between these two medicines."
+          });
+        });
+      }
+
+      // 2. Map Stopped Meds
+      if (data.stopped_medications) {
+        data.stopped_medications.forEach((m: any) => {
+          mapped.push({
+            id: `stop-${m.name}`,
+            status: "stopped",
+            drugName: m.name,
+            summary: `Not found on discharge list. (Home dose: ${m.dose})`,
+            confidence: "high",
+            needsConfirmation: true,
+            patientPrompt: `Why did you stop taking ${m.name}?`
+          });
+        });
+      }
+
+      // 3. Map Discrepancies (Changed)
+      if (data.discrepancies) {
+        data.discrepancies.forEach((m: any) => {
+          const isBrandGeneric = data.rxnorm_mappings?.some((rm: any) => rm.original === m.name);
+          mapped.push({
+            id: `diff-${m.name}`,
+            status: "changed",
+            drugName: m.name,
+            originalNames: { home: m.name, discharge: m.name },
+            summary: `${m.reason} Home: ${m.home_dose} ${m.home_freq} ➔ Discharge: ${m.discharge_dose} ${m.discharge_freq}`,
+            confidence: "high",
+            confidenceNote: isBrandGeneric ? "Verified via RxNorm brand-generic mapping" : undefined,
+            needsConfirmation: true,
+            patientPrompt: `Your dose for ${m.name} has changed. Do you have the new strength bottles?`
+          });
+        });
+      }
+
+      // 4. Map New Meds
+      if (data.new_medications) {
+        data.new_medications.forEach((m: any) => {
+          mapped.push({
+            id: `new-${m.name}`,
+            status: "new",
+            drugName: m.name,
+            summary: `Newly prescribed: ${m.dose} ${m.frequency}`,
+            confidence: "high",
+            needsConfirmation: true,
+            patientPrompt: `You have been prescribed ${m.name}. Do you have questions about this new medicine?`
+          });
+        });
+      }
+
+      // 5. Explicit Continued Meds (for completeness)
+      // Note: Backend summary has the count, but we might not need them listed as cards if they are exactly the same
+      
+      setResults(mapped.length > 0 ? mapped : SAMPLE_RESULTS);
+    } else {
+      setResults(SAMPLE_RESULTS);
+    }
+    setIsLoading(false);
+  }, []);
 
   const sortedResults = useMemo(
     () =>

@@ -1,60 +1,183 @@
-# Safety Engine Logic
+# Safety Engine Logic — Powered by RxNorm + DDInter
+import json
+import os
+from typing import List, Dict, Any
+from itertools import combinations
+
+# ── Dataset Loading ──────────────────────────────────────────────
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "mappings")
+
+def _load_json(filename: str) -> dict:
+    filepath = os.path.join(DATA_DIR, filename)
+    if not os.path.exists(filepath):
+        print(f"[SafetyEngine] WARNING: {filepath} not found, using empty dataset.")
+        return {}
+    with open(filepath, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+# Load datasets once at import time
+_rxnorm_data = _load_json("rxnorm.json")
+_ddinter_blood = _load_json("ddinter_blood.json")
+_ddinter_stomach = _load_json("ddinter_stomach.json")
+
+BRAND_TO_GENERIC: dict[str, str] = _rxnorm_data.get("brand_to_generic", {})
+GENERIC_ALIASES: dict[str, str] = _rxnorm_data.get("generic_aliases", {})
+BLOOD_INTERACTIONS: list[dict] = _ddinter_blood.get("interactions", [])
+STOMACH_INTERACTIONS: list[dict] = _ddinter_stomach.get("interactions", [])
+
+
+# ── Name Resolution (RxNorm) ────────────────────────────────────
+
+def resolve_to_generic(name: str) -> str:
+    """
+    Resolves a drug name to its canonical generic name using RxNorm data.
+    Example: "Lipitor" -> "atorvastatin", "Atorvastatin" -> "atorvastatin"
+    """
+    lower = name.lower().strip()
+
+    # Check brand-to-generic mapping
+    if lower in BRAND_TO_GENERIC:
+        return BRAND_TO_GENERIC[lower]
+
+    # Check alias mapping (e.g. albuterol -> salbutamol)
+    if lower in GENERIC_ALIASES:
+        return GENERIC_ALIASES[lower]
+
+    # Already a generic or unknown — return as-is
+    return lower
+
 
 def normalize_med_name(name: str) -> str:
-    """Basic normalization for MVP (lowercase, strip)."""
-    return name.lower().strip()
+    """Resolves to generic name via RxNorm, then normalizes."""
+    return resolve_to_generic(name)
+
+
+# ── Interaction Checking (DDInter) ──────────────────────────────
+
+def check_interactions(med_names: List[str]) -> List[Dict[str, Any]]:
+    """
+    Checks all pairs of medications against both DDInter datasets.
+    Returns a list of flagged interactions.
+    """
+    # Normalize all names to generic
+    generic_names = [resolve_to_generic(n) for n in med_names]
+    all_interactions = BLOOD_INTERACTIONS + STOMACH_INTERACTIONS
+    flags: List[Dict[str, Any]] = []
+
+    # Build a lookup set for quick pair matching
+    interaction_lookup: dict[tuple, dict] = {}
+    for entry in all_interactions:
+        key = tuple(sorted([entry["drug_a"].lower(), entry["drug_b"].lower()]))
+        interaction_lookup[key] = entry
+
+    # Check every pair
+    for a, b in combinations(generic_names, 2):
+        pair_key = tuple(sorted([a, b]))
+        if pair_key in interaction_lookup:
+            interaction = interaction_lookup[pair_key]
+            flags.append({
+                "drug_a": a,
+                "drug_b": b,
+                "severity": interaction["severity"],
+                "effect": interaction["effect"],
+                "recommendation": interaction["recommendation"],
+                "source": "DDInter"
+            })
+
+    return flags
+
+
+# ── Core Comparison ─────────────────────────────────────────────
 
 def compare_lists(home_list: list[dict], discharge_list: list[dict]) -> dict:
     """
     Core function to compare home meds vs discharge meds.
-    Returns categorized medications and escalation flags.
+    Uses RxNorm for name resolution and DDInter for interaction checking.
+    Returns categorized medications, escalation flags, and interaction warnings.
     """
     results: dict = {
         "summary": {"continued": 0, "changed": 0, "stopped": 0, "new": 0},
-        "medications": [],
-        "escalations": []
+        "new_medications": [],
+        "stopped_medications": [],
+        "discrepancies": [],
+        "interactions": [],
+        "escalations": [],
+        "rxnorm_mappings": []  # Track which brand names were resolved
     }
-    
-    # Create quick lookups
-    home_dict = {normalize_med_name(m["name"]): m for m in home_list}
-    discharge_dict = {normalize_med_name(m["name"]): m for m in discharge_list}
-    
-    # Check Discharge list (New, Continued, Changed)
+
+    # Build lookups using RxNorm-resolved names
+    home_dict: dict[str, dict] = {}
+    for m in home_list:
+        generic = normalize_med_name(m["name"])
+        original = m["name"]
+        if generic != original.lower().strip():
+            results["rxnorm_mappings"].append({
+                "original": original,
+                "resolved": generic,
+                "source": "RxNorm brand-generic mapping"
+            })
+        home_dict[generic] = m
+
+    discharge_dict: dict[str, dict] = {}
+    for m in discharge_list:
+        generic = normalize_med_name(m["name"])
+        original = m["name"]
+        if generic != original.lower().strip():
+            results["rxnorm_mappings"].append({
+                "original": original,
+                "resolved": generic,
+                "source": "RxNorm brand-generic mapping"
+            })
+        discharge_dict[generic] = m
+
+    # ── Phase 1: Compare lists ──
     for d_name, d_med in discharge_dict.items():
         if d_name in home_dict:
             h_med = home_dict[d_name]
-            if d_med.get("dose") != h_med.get("dose"):
+            if d_med.get("dose") != h_med.get("dose") or d_med.get("frequency") != h_med.get("frequency"):
                 results["summary"]["changed"] += 1
-                results["medications"].append({
+                results["discrepancies"].append({
                     "name": d_med["name"],
-                    "status": "CHANGED",
-                    "old_dose": h_med.get("dose"),
-                    "new_dose": d_med.get("dose"),
-                    "reason": "Dose was modified during hospitalization."
+                    "generic_name": d_name,
+                    "home_dose": h_med.get("dose"),
+                    "home_freq": h_med.get("frequency"),
+                    "discharge_dose": d_med.get("dose"),
+                    "discharge_freq": d_med.get("frequency"),
+                    "reason": "Dose or frequency was modified."
                 })
             else:
                 results["summary"]["continued"] += 1
-                results["medications"].append({
-                    "name": d_med["name"],
-                    "status": "CONTINUED"
-                })
         else:
             results["summary"]["new"] += 1
-            results["medications"].append({
-                "name": d_med["name"],
-                "status": "NEW",
-                "reason": "New medication added during hospitalization."
+            results["new_medications"].append({
+                **d_med,
+                "generic_name": d_name
             })
-            
-    # Check Home list (Stopped)
+
+    # Check for stopped meds 
     for h_name, h_med in home_dict.items():
         if h_name not in discharge_dict:
             results["summary"]["stopped"] += 1
-            results["medications"].append({
-                "name": h_med["name"],
-                "status": "STOPPED",
-                "reason": "Home medication not found on discharge list."
+            results["stopped_medications"].append({
+                **h_med,
+                "generic_name": h_name
             })
+            results["escalations"].append(
+                f"WARNING: Previously taken {h_med['name']} ({h_name}) is NOT on discharge list."
+            )
+
+    # ── Phase 2: Check drug-drug interactions on the DISCHARGE list ──
+    discharge_names = [m["name"] for m in discharge_list]
+    interactions = check_interactions(discharge_names)
+
+    for interaction in interactions:
+        results["interactions"].append(interaction)
+        severity_emoji = {"low": "ℹ️", "moderate": "⚠️", "high": "🚨", "critical": "🚨🚨"}.get(
+            interaction["severity"], "⚠️"
+        )
+        results["escalations"].append(
+            f"{severity_emoji} INTERACTION: {interaction['drug_a']} + {interaction['drug_b']} — {interaction['effect']}"
+        )
 
     return results
-

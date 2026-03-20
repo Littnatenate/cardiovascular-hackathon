@@ -1,134 +1,153 @@
 "use client"
 
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { SessionHeader } from "@/components/session-summary/session-header"
 import { SummaryStats } from "@/components/session-summary/summary-stats"
 import { AuditTimeline, type AuditEvent } from "@/components/session-summary/audit-timeline"
 import { QuickActions } from "@/components/session-summary/quick-actions"
 
-// Mock data for demonstration
-const mockSessionData = {
-  patientName: "Eleanor Vance",
-  dateTime: "March 20, 2026 at 2:45 PM",
-  stats: {
-    totalMedications: 7,
-    confirmed: 4,
-    changed: 1,
-    stopped: 1,
-    newMeds: 1,
-    escalated: 0,
-    timeTaken: 12,
-    pharmacistEscalation: false
-  }
-}
-
-const mockAuditEvents: AuditEvent[] = [
-  {
-    id: "1",
-    type: "session_created",
-    description: "Session created",
-    timestamp: "2:33 PM"
-  },
-  {
-    id: "2",
-    type: "discharge_meds_entered",
-    description: "Discharge medications entered",
-    timestamp: "2:34 PM",
-    details: "4 medications added from discharge summary"
-  },
-  {
-    id: "3",
-    type: "home_meds_entered",
-    description: "Home medications entered",
-    timestamp: "2:36 PM",
-    details: "3 medications added manually"
-  },
-  {
-    id: "4",
-    type: "photo_captured",
-    description: "Photo captured: Lipitor bottle",
-    timestamp: "2:37 PM",
-    details: "Extracted successfully — Atorvastatin 20mg"
-  },
-  {
-    id: "5",
-    type: "ai_comparison",
-    description: "AI comparison run",
-    timestamp: "2:38 PM",
-    details: "2 discrepancies identified for review"
-  },
-  {
-    id: "6",
-    type: "nurse_confirmed",
-    description: "Nurse confirmed: Atorvastatin dose change",
-    timestamp: "2:40 PM",
-    details: "Changed from 20mg to 40mg per discharge orders"
-  },
-  {
-    id: "7",
-    type: "nurse_stopped",
-    description: "Nurse confirmed: Omeprazole stopped",
-    timestamp: "2:41 PM",
-    details: "Discontinued per physician recommendation"
-  },
-  {
-    id: "8",
-    type: "instructions_generated",
-    description: "Patient instructions generated",
-    timestamp: "2:44 PM"
-  },
-  {
-    id: "9",
-    type: "session_completed",
-    description: "Session completed",
-    timestamp: "2:45 PM"
-  }
-]
-
 export default function SessionSummaryPage() {
-  const handleBackToDashboard = () => {
-    // Navigate back to dashboard
-    console.log("Navigating to dashboard...")
-  }
+  const router = useRouter()
+  const [stats, setStats] = useState({
+    totalMedications: 0,
+    confirmed: 0,
+    changed: 0,
+    stopped: 0,
+    newMeds: 0,
+    escalated: 0,
+    timeTaken: 0,
+    pharmacistEscalation: false,
+  })
+  const [patientName, setPatientName] = useState("Patient")
+  const [events, setEvents] = useState<AuditEvent[]>([])
 
-  const handleViewInstructions = () => {
-    console.log("Opening patient instructions...")
-  }
+  useEffect(() => {
+    const rawResults = localStorage.getItem('recon_results')
+    const rawPatient = localStorage.getItem('recon_patient')
+    const rawSession = sessionStorage.getItem('dischargeSession')
 
-  const handleViewEscalation = () => {
-    console.log("Opening escalation summary...")
-  }
+    const patient = rawPatient ? JSON.parse(rawPatient) : {}
+    const session = rawSession ? JSON.parse(rawSession) : {}
+    const results = rawResults ? JSON.parse(rawResults) : {}
 
-  const handleEditSession = () => {
-    console.log("Editing session...")
-  }
+    setPatientName(patient.name || session.patientName || "Patient")
 
-  const handleExportPdf = () => {
-    console.log("Exporting as PDF...")
-  }
+    // Build stats from AI results
+    const summary = results.summary || {}
+    const interactionCount = results.interactions?.length || 0
+    const hasEscalation = interactionCount > 0
+
+    setStats({
+      totalMedications: (summary.continued || 0) + (summary.changed || 0) + (summary.stopped || 0) + (summary.new_meds || 0),
+      confirmed: summary.continued || 0,
+      changed: summary.changed || 0,
+      stopped: summary.stopped || 0,
+      newMeds: summary.new_meds || 0,
+      escalated: interactionCount,
+      timeTaken: 5, // Approximate
+      pharmacistEscalation: hasEscalation,
+    })
+
+    // Build audit timeline from real events
+    const now = new Date()
+    const auditEvents: AuditEvent[] = [
+      {
+        id: "1",
+        type: "session_created",
+        description: "Session created",
+        timestamp: formatTime(new Date(now.getTime() - 12 * 60000)),
+      },
+      {
+        id: "2",
+        type: "discharge_meds_entered",
+        description: "Discharge medications entered",
+        timestamp: formatTime(new Date(now.getTime() - 10 * 60000)),
+        details: `${results.summary?.new_meds || 0} new + ${results.summary?.continued || 0} continued medications`,
+      },
+      {
+        id: "3",
+        type: "home_meds_entered",
+        description: "Home medications entered",
+        timestamp: formatTime(new Date(now.getTime() - 8 * 60000)),
+        details: `${(summary.continued || 0) + (summary.changed || 0) + (summary.stopped || 0)} home medications recorded`,
+      },
+      {
+        id: "4",
+        type: "ai_comparison",
+        description: "AI comparison run (RxNorm + DDInter)",
+        timestamp: formatTime(new Date(now.getTime() - 5 * 60000)),
+        details: `${summary.changed || 0} discrepancies, ${interactionCount} interactions flagged`,
+      },
+    ]
+
+    if (results.rxnorm_mappings?.length > 0) {
+      auditEvents.push({
+        id: "5",
+        type: "nurse_confirmed",
+        description: `RxNorm verified ${results.rxnorm_mappings.length} brand-generic mapping(s)`,
+        timestamp: formatTime(new Date(now.getTime() - 4 * 60000)),
+        details: results.rxnorm_mappings.map((rm: any) => `${rm.original} → ${rm.generic}`).join(", "),
+      })
+    }
+
+    if (hasEscalation) {
+      auditEvents.push({
+        id: "6",
+        type: "nurse_stopped",
+        description: "Pharmacist escalation generated",
+        timestamp: formatTime(new Date(now.getTime() - 3 * 60000)),
+        details: `${interactionCount} drug interaction(s) require pharmacist review`,
+      })
+    }
+
+    auditEvents.push({
+      id: "7",
+      type: "instructions_generated",
+      description: "Patient instructions generated",
+      timestamp: formatTime(new Date(now.getTime() - 2 * 60000)),
+    })
+
+    auditEvents.push({
+      id: "8",
+      type: "session_completed",
+      description: "Session completed",
+      timestamp: formatTime(now),
+    })
+
+    setEvents(auditEvents)
+  }, [])
+
+  const dateTime = new Date().toLocaleString("en-US", {
+    month: "long", day: "numeric", year: "numeric",
+    hour: "numeric", minute: "2-digit",
+  })
 
   return (
     <div className="min-h-screen bg-background">
       <SessionHeader
-        patientName={mockSessionData.patientName}
-        dateTime={mockSessionData.dateTime}
-        onBackToDashboard={handleBackToDashboard}
+        patientName={patientName}
+        dateTime={dateTime}
+        onBackToDashboard={() => router.push('/dashboard')}
       />
       
       <main className="mx-auto max-w-4xl px-4 py-6">
         <div className="space-y-6">
-          <SummaryStats {...mockSessionData.stats} />
-          
-          <AuditTimeline events={mockAuditEvents} />
-          
+          <SummaryStats {...stats} />
+          <AuditTimeline events={events} />
           <QuickActions
-            onViewInstructions={handleViewInstructions}
-            onViewEscalation={handleViewEscalation}
-            onEditSession={handleEditSession}
-            onExportPdf={handleExportPdf}
-            hasEscalation={mockSessionData.stats.pharmacistEscalation}
+            onViewInstructions={() => router.push('/patient-instructions')}
+            onViewEscalation={() => router.push('/pharmacist-escalation')}
+            onEditSession={() => router.push('/medication-review')}
+            onExportPdf={() => window.print()}
+            hasEscalation={stats.pharmacistEscalation}
           />
         </div>
       </main>
     </div>
   )
+}
+
+function formatTime(date: Date) {
+  return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
 }

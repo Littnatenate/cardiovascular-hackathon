@@ -1,0 +1,41 @@
+{
+  "_meta": {
+    "description": "RxNorm Brand-to-Generic drug name mapping. Used by the Safety Engine to recognize that brand and generic names refer to the same active ingredient.",
+    "source": "Simplified subset of RxNorm for hackathon demo",
+    "usage": "Lookup: brand_to_generic[brand_lower] -> generic_lower"
+  },
+  "brand_to_generic": {
+    "lipitor": "atorvastatin",
+    "crestor": "rosuvastatin",
+    "zocor": "simvastatin",
+    "glucophage": "metformin",
+    "januvia": "sitagliptin",
+    "prinivil": "lisinopril",
+    "zestril": "lisinopril",
+    "norvasc": "amlodipine",
+    "coumadin": "warfarin",
+    "jantoven": "warfarin",
+    "plavix": "clopidogrel",
+    "eliquis": "apixaban",
+    "xarelto": "rivarelbanan",
+    "lovenox": "enoxaparin",
+    "prilosec": "omeprazole",
+    "nexium": "esomeprazole",
+    "protonix": "pantoprazole",
+    "lasix": "furosemide",
+    "lopressor": "metoprolol",
+    "toprol xl": "metoprolol",
+    "tenormin": "atenolol",
+    "coreg": "carvedilol",
+    "entresto": "sacubitril/valsartan",
+    "aldactone": "spironolactone",
+    "symbicort": "budesonide/formoterol",
+    "spiriva": "tiotropium",
+    "ventolin": "salbutamol",
+    "proventil": "salbutamol"
+  },
+  "generic_aliases": {
+    "albuterol": "salbutamol",
+    "acetaminophen": "paracetamol"
+  }
+}

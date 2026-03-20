@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Medication, MedSource } from "./types";
 import { MedRow } from "./med-row";
@@ -23,41 +23,40 @@ import {
   Plus,
 } from "lucide-react";
 
-const SAMPLE_MEDS: Medication[] = [
-  {
-    id: "1",
-    drugName: "Lipitor",
-    strength: "20 mg",
-    dose: "1 tablet",
-    frequency: "Once daily",
-    source: "photo",
-  },
-  {
-    id: "2",
-    drugName: "Metformin",
-    strength: "500 mg",
-    dose: "1 tablet",
-    frequency: "Twice daily",
-    source: "admission",
-  },
-  {
-    id: "3",
-    drugName: "Omeprazole",
-    strength: "20 mg",
-    dose: "1 capsule",
-    frequency: "Once daily (morning)",
-    source: "manual",
-  },
-];
+
 
 const SESSION_ID = "REC-2024-04821";
 const PATIENT_NAME = "Margaret T. Holloway";
 
 export function HomeMedsEntry() {
   const router = useRouter();
-  const [meds, setMeds] = useState<Medication[]>(SAMPLE_MEDS);
+  const [meds, setMeds] = useState<Medication[]>([]);
   const [activeMethod, setActiveMethod] = useState<MedSource | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('medrecon_home_list');
+    if (saved) {
+      try {
+        setMeds(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse saved home meds", e);
+      }
+    } else {
+      // Fallback to a single empty state or help the user see it's working
+      setMeds([]);
+    }
+    setIsInitialized(true);
+  }, []);
+
+  // Save to localStorage on change
+  useEffect(() => {
+    if (isInitialized) {
+      localStorage.setItem('medrecon_home_list', JSON.stringify(meds));
+    }
+  }, [meds, isInitialized]);
 
   function handleMethodSelect(method: MedSource) {
     setActiveMethod(method);

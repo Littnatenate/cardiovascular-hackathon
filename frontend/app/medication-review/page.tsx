@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, ScanSearch, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -16,41 +16,66 @@ const PATIENT = {
   dischargeDate: "Mar 19, 2026",
 }
 
-const DISCHARGE_MEDS: Medication[] = [
-  { id: "d1", name: "Atorvastatin", strength: "40 mg", frequency: "Once daily" },
-  { id: "d2", name: "Metformin", strength: "500 mg", frequency: "Twice daily" },
-  { id: "d3", name: "Amlodipine", strength: "5 mg", frequency: "Once daily" },
-  { id: "d4", name: "Enoxaparin", strength: "40 mg", frequency: "Once daily (inject.)" },
-]
-
-const HOME_MEDS: Medication[] = [
-  { id: "h1", name: "Lipitor", strength: "20 mg", frequency: "Once daily", source: "photo" },
-  { id: "h2", name: "Metformin", strength: "500 mg", frequency: "Twice daily", source: "admission" },
-  { id: "h3", name: "Omeprazole", strength: "20 mg", frequency: "Once daily", source: "manual" },
-]
-
 type ScreenState = "review" | "analyzing" | "done"
 
 export default function PreAnalysisReview() {
   const router = useRouter()
   const [screen, setScreen] = useState<ScreenState>("review")
+  const [homeMeds, setHomeMeds] = useState<Medication[]>([])
+  const [dischargeMeds, setDischargeMeds] = useState<Medication[]>([])
+
+  useEffect(() => {
+    const rawHome = localStorage.getItem('medrecon_home_list')
+    const rawDischarge = localStorage.getItem('medrecon_discharge_list')
+    
+    if (rawHome) {
+      const parsed = JSON.parse(rawHome)
+      // Map 'drugName' from entry screens to 'name' for review screen
+      setHomeMeds(parsed.map((m: any) => ({
+        id: m.id,
+        name: m.drugName || m.name,
+        strength: m.strength,
+        frequency: m.frequency,
+        source: m.source
+      })))
+    }
+
+    if (rawDischarge) {
+      const parsed = JSON.parse(rawDischarge)
+      setDischargeMeds(parsed.map((m: any) => ({
+        id: m.id,
+        name: m.drugName || m.name,
+        strength: m.strength,
+        frequency: m.frequency
+      })))
+    }
+  }, [])
 
   async function handleRunAnalysis() {
+    if (homeMeds.length === 0 || dischargeMeds.length === 0) {
+      alert("Please ensure both medication lists have at least one entry.")
+      return
+    }
+    
     setScreen("analyzing")
     try {
-      // Small artificial delay for UX feel
-      await new Promise(r => setTimeout(r, 1000))
+      // 1. Prepare data for backend
+      const formattedHome = homeMeds.map(m => ({ name: m.name, dose: m.strength, frequency: m.frequency }))
+      const formattedDischarge = dischargeMeds.map(m => ({ name: m.name, dose: m.strength, frequency: m.frequency }))
+
+      // 2. Call our Python AI backend
+      const results = await reconcileMedications(formattedHome, formattedDischarge)
       
-      const results = await reconcileMedications(HOME_MEDS, DISCHARGE_MEDS)
-      console.log("Analysis results:", results)
+      // 3. Persist results for the next screen
+      localStorage.setItem('recon_results', JSON.stringify(results))
+      localStorage.setItem('recon_patient', JSON.stringify(PATIENT))
       
       setScreen("done")
-      // Wait a moment for the "Done" state to show before navigating
       setTimeout(() => router.push('/ai-comparison'), 800)
     } catch (err) {
-      console.error(err)
+      console.error("AI Analysis failed:", err)
       setScreen("review")
-      alert("Backend server not reached. Make sure it is running!")
+      alert("AI Service unreachable. Please ensure the Python backend is running on port 8000.")
     }
   }
 
@@ -107,13 +132,13 @@ export default function PreAnalysisReview() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <MedListColumn
             title="Discharge Meds"
-            meds={DISCHARGE_MEDS}
+            meds={dischargeMeds}
             variant="discharge"
             onEdit={() => router.push('/discharge-meds')}
           />
           <MedListColumn
             title="Home Meds"
-            meds={HOME_MEDS}
+            meds={homeMeds}
             variant="home"
             onEdit={() => router.push('/home-meds')}
           />
@@ -121,9 +146,8 @@ export default function PreAnalysisReview() {
 
         {/* Insight callout */}
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 leading-relaxed">
-          <span className="font-semibold">Quick look:</span> Discharge has {DISCHARGE_MEDS.length} medications and
-          home has {HOME_MEDS.length}. Omeprazole appears on the home list but not on discharge — it may have been
-          intentionally stopped. The AI comparison will flag all discrepancies.
+          <span className="font-semibold">Quick look:</span> Discharge has {dischargeMeds.length} medications and
+          home has {homeMeds.length}. The AI comparison will flag all discrepancies.
         </div>
 
         {/* Bottom action row */}

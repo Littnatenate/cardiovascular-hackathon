@@ -1,0 +1,23 @@
+{
+  "patient_name": "Edward Chen",
+  "age": 75,
+  "condition": "Severe COPD / Pneumonia",
+  "home_meds": [
+    { "name": "Symbicort", "dose": "160/4.5mcg", "frequency": "2 puffs twice daily" },
+    { "name": "Prednisolone", "dose": "5mg", "frequency": "One tablet daily" },
+    { "name": "Spiriva", "dose": "18mcg", "frequency": "One capsule inhaled daily" }
+  ],
+  "discharge_meds": [
+    { "name": "Symbicort", "dose": "160/4.5mcg", "frequency": "2 puffs twice daily" },
+    { "name": "Prednisolone", "dose": "25mg", "frequency": "Five tablets daily (Tapering)", "notes": "Increase for acute exacerbation" },
+    { "name": "Amoxicillin", "dose": "500mg", "frequency": "One capsule three times daily", "notes": "New antibiotic for pneumonia" },
+    { "name": "Salbutamol", "dose": "100mcg", "frequency": "As needed for shortness of breath", "notes": "Rescue inhaler" }
+  ],
+  "expected_flags": [
+    { "type": "UNCHANGED", "med": "Symbicort" },
+    { "type": "CHANGED", "med": "Prednisolone", "reason": "Dose increased from 5mg to 25mg" },
+    { "type": "NEW", "med": "Amoxicillin" },
+    { "type": "NEW", "med": "Salbutamol" },
+    { "type": "STOPPED", "med": "Spiriva", "reason": "Potentially omitted in error or intentional switch" }
+  ]
+}
