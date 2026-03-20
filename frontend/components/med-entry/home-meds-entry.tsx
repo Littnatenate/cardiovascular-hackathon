@@ -7,6 +7,7 @@ import { MedRow } from "./med-row";
 import { AddMedForm } from "./add-med-form";
 import { InputMethodSelector } from "./input-method-selector";
 import { Button } from "@/components/ui/button";
+import { SessionTopBar } from "@/components/session-top-bar";
 import {
   Empty,
   EmptyMedia,
@@ -23,8 +24,6 @@ import {
   Plus,
 } from "lucide-react";
 
-
-
 const SESSION_ID = "REC-2024-04821";
 const PATIENT_NAME = "Margaret T. Holloway";
 
@@ -34,8 +33,21 @@ export function HomeMedsEntry() {
   const [activeMethod, setActiveMethod] = useState<MedSource | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [patientData, setPatientData] = useState({ name: PATIENT_NAME, id: SESSION_ID });
 
-  // Load from localStorage on mount
+  // Load patient data from session (friend's feature)
+  useEffect(() => {
+    const saved = sessionStorage.getItem("dischargeSession");
+    if (saved) {
+      const data = JSON.parse(saved);
+      setPatientData({
+        name: data.patientName,
+        id: data.id || SESSION_ID
+      });
+    }
+  }, []);
+
+  // Load from localStorage on mount (AI persistence)
   useEffect(() => {
     const saved = localStorage.getItem('medrecon_home_list');
     if (saved) {
@@ -45,13 +57,12 @@ export function HomeMedsEntry() {
         console.error("Failed to parse saved home meds", e);
       }
     } else {
-      // Fallback to a single empty state or help the user see it's working
       setMeds([]);
     }
     setIsInitialized(true);
   }, []);
 
-  // Save to localStorage on change
+  // Save to localStorage on change (AI persistence)
   useEffect(() => {
     if (isInitialized) {
       localStorage.setItem('medrecon_home_list', JSON.stringify(meds));
@@ -63,10 +74,8 @@ export function HomeMedsEntry() {
     if (method === "manual") {
       setShowAddForm(true);
     } else if (method === "photo") {
-      // Navigate to OCR screen
       router.push('/photo-capture');
     } else if (method === "admission") {
-      // In production: pull from hospital system
       const importedMed: Medication = {
         id: crypto.randomUUID(),
         drugName: "Lisinopril",
@@ -94,35 +103,13 @@ export function HomeMedsEntry() {
   }
 
   return (
-    <div className="min-h-screen bg-background font-sans">
-      {/* Top bar */}
-      <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-        <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-          <button
-            className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Go back"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <span className="sr-only sm:not-sr-only">Back</span>
-          </button>
-
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground truncate">{PATIENT_NAME}</p>
-            <p className="text-xs text-muted-foreground">Session {SESSION_ID}</p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="text-xs font-medium">
-              Step 2 of 4
-            </Badge>
-          </div>
-        </div>
-
-        {/* Progress bar */}
-        <div className="h-1 w-full bg-muted" aria-hidden="true">
-          <div className="h-full w-1/2 bg-primary transition-all" />
-        </div>
-      </header>
+    <div className="min-h-screen bg-background font-sans flex flex-col">
+      <SessionTopBar 
+        patientName={patientData.name} 
+        sessionId={patientData.id} 
+        step={2} 
+        backRoute="/new-session" 
+      />
 
       <main className="mx-auto max-w-3xl px-4 pb-32 pt-6">
         {/* Section heading */}

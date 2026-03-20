@@ -71,6 +71,7 @@ export function PhotoCaptureOcrScreen() {
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const [addedMeds, setAddedMeds] = useState<AddedMed[]>([]);
   const [justAdded, setJustAdded] = useState(false);
+  const router = useRouter();
 
   const handleCapture = useCallback(() => {
     setCaptureState("preview");
@@ -144,6 +145,7 @@ export function PhotoCaptureOcrScreen() {
       {/* Header */}
       <header className="sticky top-0 z-20 flex items-center gap-3 px-4 py-3 bg-card border-b border-border shadow-sm">
         <button
+          onClick={() => router.push('/home-meds')}
           aria-label="Go back"
           className="rounded-lg p-1.5 hover:bg-muted transition-colors"
         >

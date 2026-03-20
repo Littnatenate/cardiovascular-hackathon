@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button"
 import { PatientBanner } from "@/components/med-review/patient-banner"
 import { MedListColumn, type Medication } from "@/components/med-review/med-list-column"
 import { reconcileMedications } from "@/lib/api"
+import { SessionLayout } from "@/components/session-layout"
+import { SessionTopBar } from "@/components/session-top-bar"
 
-const PATIENT = {
+const DEFAULT_PATIENT = {
   name: "Margaret Thompson",
   dob: "04/12/1951",
   mrn: "MRN-002847",
@@ -23,14 +25,28 @@ export default function PreAnalysisReview() {
   const [screen, setScreen] = useState<ScreenState>("review")
   const [homeMeds, setHomeMeds] = useState<Medication[]>([])
   const [dischargeMeds, setDischargeMeds] = useState<Medication[]>([])
+  const [patient, setPatient] = useState(DEFAULT_PATIENT)
 
   useEffect(() => {
+    // Load patient data from session (friend's feature)
+    const savedSession = sessionStorage.getItem("dischargeSession")
+    if (savedSession) {
+      const data = JSON.parse(savedSession)
+      setPatient({
+        name: data.patientName,
+        dob: "04/12/1951",
+        mrn: data.patientId || "MRN-002847",
+        allergies: (data.allergies && data.allergies.length > 0) ? data.allergies : ["None Known"],
+        dischargeDate: data.dischargeDate || "Mar 19, 2026",
+      })
+    }
+
+    // Load medication lists from localStorage (AI persistence)
     const rawHome = localStorage.getItem('medrecon_home_list')
     const rawDischarge = localStorage.getItem('medrecon_discharge_list')
     
     if (rawHome) {
       const parsed = JSON.parse(rawHome)
-      // Map 'drugName' from entry screens to 'name' for review screen
       setHomeMeds(parsed.map((m: any) => ({
         id: m.id,
         name: m.drugName || m.name,
@@ -59,16 +75,13 @@ export default function PreAnalysisReview() {
     
     setScreen("analyzing")
     try {
-      // 1. Prepare data for backend
       const formattedHome = homeMeds.map(m => ({ name: m.name, dose: m.strength, frequency: m.frequency }))
       const formattedDischarge = dischargeMeds.map(m => ({ name: m.name, dose: m.strength, frequency: m.frequency }))
 
-      // 2. Call our Python AI backend
       const results = await reconcileMedications(formattedHome, formattedDischarge)
       
-      // 3. Persist results for the next screen
       localStorage.setItem('recon_results', JSON.stringify(results))
-      localStorage.setItem('recon_patient', JSON.stringify(PATIENT))
+      localStorage.setItem('recon_patient', JSON.stringify(patient))
       
       setScreen("done")
       setTimeout(() => router.push('/ai-comparison'), 800)
@@ -80,39 +93,13 @@ export default function PreAnalysisReview() {
   }
 
   return (
-    <div className="min-h-screen bg-background font-sans">
-      {/* Top nav bar */}
-      <header className="sticky top-0 z-20 border-b border-border bg-card/80 backdrop-blur-sm shadow-sm">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-          {/* Logo / app name */}
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <ShieldCheck className="h-4.5 w-4.5" strokeWidth={2.5} />
-            </div>
-            <span className="font-semibold text-foreground tracking-tight">MedRecon</span>
-          </div>
-          {/* Step indicator */}
-          <ol className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground select-none">
-            {["Discharge Meds", "Home Meds", "Review", "Analysis"].map((step, i) => (
-              <li key={step} className="flex items-center gap-1">
-                {i > 0 && <span className="text-border">/</span>}
-                <span
-                  className={
-                    i === 2
-                      ? "font-semibold text-primary"
-                      : i < 2
-                      ? "text-muted-foreground line-through"
-                      : "text-muted-foreground/50"
-                  }
-                >
-                  {step}
-                </span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </header>
-
+    <SessionLayout>
+      <SessionTopBar 
+        patientName={patient.name} 
+        sessionId={patient.mrn} 
+        step={4} 
+        backRoute="/discharge-meds" 
+      />
       {/* Page body */}
       <main className="mx-auto max-w-4xl px-4 py-6 space-y-5">
         {/* Page title */}
@@ -126,7 +113,7 @@ export default function PreAnalysisReview() {
         </div>
 
         {/* Patient info banner */}
-        <PatientBanner {...PATIENT} />
+        <PatientBanner {...patient} />
 
         {/* Two-column med lists */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -177,16 +164,8 @@ export default function PreAnalysisReview() {
             )}
           </Button>
 
-          {/* Secondary back link */}
-          <button
-            onClick={() => router.push('/home-meds')}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Home Meds
-          </button>
         </div>
       </main>
-    </div>
+    </SessionLayout>
   )
 }

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Pill, Plus, ArrowLeft, ArrowRight, FileText, Trash2 } from "lucide-react"
+import { Pill, FileText, Plus, ArrowLeft, ArrowRight, Trash2 } from "lucide-react"
+import { SessionTopBar } from "@/components/session-top-bar"
 
 // ── Types ──────────────────────────────────────────────────────
 interface Medication {
@@ -14,13 +15,30 @@ interface Medication {
   route?: string
 }
 
+function createId() {
+  return Math.random().toString(36).substring(2, 11)
+}
+
 // ── Component ──────────────────────────────────────────────────
 export function DischargeMedsScreen() {
   const router = useRouter()
   const [meds, setMeds] = useState<Medication[]>([])
   const [isInitialized, setIsInitialized] = useState(false)
+  const [patientData, setPatientData] = useState({ name: "Sarah Johnson", id: "MRC-2024-0047" })
 
-  // Load from localStorage on mount
+  // Load patient data from session (friend's feature)
+  useEffect(() => {
+    const saved = sessionStorage.getItem("dischargeSession")
+    if (saved) {
+      const data = JSON.parse(saved)
+      setPatientData({
+        name: data.patientName,
+        id: data.id || "MRC-2024-0047"
+      })
+    }
+  }, [])
+
+  // Load from localStorage on mount (AI persistence)
   useEffect(() => {
     const saved = localStorage.getItem("medrecon_discharge_list")
     if (saved) {
@@ -33,7 +51,7 @@ export function DischargeMedsScreen() {
     setIsInitialized(true)
   }, [])
 
-  // Save to localStorage on change
+  // Save to localStorage on change (AI persistence)
   useEffect(() => {
     if (isInitialized) {
       localStorage.setItem("medrecon_discharge_list", JSON.stringify(meds))
@@ -65,21 +83,12 @@ export function DischargeMedsScreen() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-        <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground truncate">Margaret Thompson</p>
-            <p className="text-xs text-muted-foreground">Discharge Prescription Entry</p>
-          </div>
-          <span className="text-xs font-medium bg-primary/10 text-primary rounded-full px-2.5 py-1">
-            Step 1 of 4
-          </span>
-        </div>
-        <div className="h-1 w-full bg-muted" aria-hidden="true">
-          <div className="h-full w-1/4 bg-primary transition-all" />
-        </div>
-      </header>
+      <SessionTopBar 
+        patientName={patientData.name} 
+        sessionId={patientData.id} 
+        step={3} 
+        backRoute="/home-meds" 
+      />
 
       <main className="flex-1 px-4 py-4 space-y-4 pb-32 mx-auto max-w-3xl w-full">
         {/* Title */}

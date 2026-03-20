@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { AlertCircle, ArrowRight, CalendarDays, X } from "lucide-react"
+import { dischargeSessions } from "@/lib/mock-data"
 
 const WARD_OPTIONS = [
   "Ward 5A – General Medicine",
@@ -52,8 +53,17 @@ export function NewSessionForm() {
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {}
-    if (!patientName.trim()) newErrors.patientName = "Patient name is required"
-    if (!patientId.trim()) newErrors.patientId = "Patient ID / NRIC is required"
+    if (!patientName.trim()) {
+      newErrors.patientName = "Patient name is required"
+    }
+
+    const nricValue = patientId.trim()
+    if (!nricValue) {
+      newErrors.patientId = "Patient ID / NRIC is required"
+    } else if (!/^[STFGM]\d{7}[A-Z]$/i.test(nricValue)) {
+      newErrors.patientId = "Please enter a valid NRIC (e.g. S1234567A)"
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -68,7 +78,7 @@ export function NewSessionForm() {
     await new Promise((r) => setTimeout(r, 400))
 
     // Store session data for use in subsequent screens
-    const session = {
+    const sessionDetail = {
       id: `SESSION-${Date.now()}`,
       patientName: patientName.trim(),
       patientId: patientId.trim(),
@@ -79,12 +89,27 @@ export function NewSessionForm() {
       createdAt: new Date().toISOString(),
     }
 
-    // Clear previous session data for a clean start
+    // Clear previous session data for a clean start (AI persistence)
     localStorage.removeItem("medrecon_home_list")
     localStorage.removeItem("medrecon_discharge_list")
     localStorage.removeItem("recon_results")
 
-    sessionStorage.setItem("dischargeSession", JSON.stringify(session))
+    sessionStorage.setItem("dischargeSession", JSON.stringify(sessionDetail))
+
+    // Save to dashboard list (friend's feature)
+    const newDashboardSession = {
+      id: sessionDetail.id,
+      patientName: sessionDetail.patientName,
+      status: 'in-progress',
+      updatedAt: new Date(),
+      createdAt: new Date(),
+      mrn: sessionDetail.patientId
+    }
+
+    const saved = localStorage.getItem('medsafe_sessions')
+    const currentSessions = saved ? JSON.parse(saved) : dischargeSessions
+    currentSessions.unshift(newDashboardSession)
+    localStorage.setItem('medsafe_sessions', JSON.stringify(currentSessions))
 
     // Navigate to the next step (Home Medication entry)
     router.push('/home-meds')
