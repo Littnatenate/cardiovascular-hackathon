@@ -9,6 +9,9 @@ env/
 .env
 .env.local
 
+# GitNexus Local Index
+.gitnexus/
+
 # Node
 node_modules/
 dist/

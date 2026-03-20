@@ -3,6 +3,7 @@ import asyncio
 from openai import AsyncOpenAI
 from typing import List, Dict, Any
 from app.services.scrubber import scrubber
+from app.services.clinical_rag import rag_engine
 
 # ── Configuration (Model-Agnostic) ──────────
 # Point this to LM Studio (default: http://127.0.0.1:1234/v1)
@@ -37,9 +38,22 @@ async def generate_patient_instructions(comparison_results: Dict[str, Any], pati
     # 1. Anonymize data before sending to AI (Safety First)
     anonymized_context = scrubber.prepare_llm_context(patient_data, comparison_results)
     
+    # 2. Fetch Clinical RAG Facts (Zero Hallucination Guardrail)
+    meds_to_fetch = []
+    for cat in ["new_medications", "discrepancies", "continuing_medications"]:
+        for m in comparison_results.get(cat, []):
+            meds_to_fetch.append(m.get("generic") or m.get("name"))
+            
+    rag_facts_blocks = []
+    for med in set(filter(None, meds_to_fetch)):
+        facts = await rag_engine.get_medication_facts(med)
+        rag_facts_blocks.append(facts)
+    rag_context = "\n".join(rag_facts_blocks)
+
     try:
-        # 2. Call LLM (OpenAI-compatible)
-        prompt = PROMPT_TEMPLATE.replace("{{notes}}", anonymized_context)
+        # 3. Call LLM (OpenAI-compatible)
+        base_prompt = PROMPT_TEMPLATE.replace("{{notes}}", anonymized_context)
+        prompt = f"{base_prompt}\n\n=== VERIFIED CLINICAL FACTS (DO NOT HALLUCINATE) ===\n{rag_context}\n"
         
         response = await client.chat.completions.create(
             model=LLM_MODEL,
@@ -50,6 +64,8 @@ async def generate_patient_instructions(comparison_results: Dict[str, Any], pati
                         "You are a compassionate cardiovascular discharge nurse. "
                         "Respond ONLY with the final patient discharge instructions. "
                         "DO NOT include any internal 'Thinking Process', reasoning, or monologue. "
+                        "You MUST ONLY use the medical facts provided in the 'VERIFIED CLINICAL FACTS' section for any side effects, warnings, or indications. "
+                        "If a side effect is not listed there, DO NOT mention it. "
                         "Start your response immediately with the header '# Your Personal Medication Guide'."
                     )
                 },

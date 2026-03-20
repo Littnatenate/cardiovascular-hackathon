@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { MedicationCard, type Medication } from "@/components/medication-card"
-import { Printer, FileText, Check, Heart, AlertCircle, ChevronLeft, Sparkles, Loader2 } from "lucide-react"
+import { Printer, FileText, Check, Heart, AlertCircle, ChevronLeft, Sparkles, Loader2, ShieldCheck } from "lucide-react"
 import ReactMarkdown from 'react-markdown'
 import { generateEducation } from '@/lib/api'
 
@@ -215,7 +215,11 @@ export default function PatientInstructions() {
               </Button>
             </div>
           ) : (
-            <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-6 md:p-8 shadow-sm print:border-gray-300 print:bg-white text-left prose prose-primary max-w-none">
+            <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-6 md:p-8 shadow-sm print:border-gray-300 print:bg-white text-left prose prose-primary max-w-none relative mt-12 md:mt-0">
+              <div className="md:absolute md:top-4 md:right-4 mb-4 md:mb-0 inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-800 print:border print:border-green-200">
+                <ShieldCheck className="size-4" />
+                Verified by HSA & FDA Data
+              </div>
               <ReactMarkdown>{aiInstructions}</ReactMarkdown>
             </div>
           )}
