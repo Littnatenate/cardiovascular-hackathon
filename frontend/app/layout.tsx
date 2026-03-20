@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { NavigationHeader } from '@/components/navigation-header'
+import { currentNurse } from '@/lib/mock-data'
+import { ThemeProvider } from "@/components/theme-provider"
 import './globals.css'
 
 const inter = Inter({ 
@@ -43,27 +46,22 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} font-sans antialiased bg-gray-50`}>
-        <nav className="fixed top-0 left-0 right-0 h-14 bg-white border-b z-50 flex items-center px-6 gap-4 overflow-x-auto whitespace-nowrap scrollbar-hide">
-          <span className="font-bold text-blue-600 mr-4">MedSafe Docs:</span>
-          <a href="/dashboard" className="text-sm font-medium hover:text-blue-500">Dashboard</a>
-          <a href="/new-session" className="text-sm font-medium hover:text-blue-500">New Session</a>
-          <a href="/home-meds" className="text-sm font-medium hover:text-blue-500">Home Meds</a>
-          <a href="/discharge-meds" className="text-sm font-medium hover:text-blue-500">Discharge Meds</a>
-          <a href="/photo-capture" className="text-sm font-medium hover:text-blue-500">OCR</a>
-          <a href="/medication-review" className="text-sm font-medium hover:text-blue-500">Review</a>
-          <a href="/ai-comparison" className="text-sm font-medium hover:text-blue-500">AI Results</a>
-          <a href="/medication-detail" className="text-sm font-medium hover:text-blue-500">Detail</a>
-          <a href="/patient-instructions" className="text-sm font-medium hover:text-blue-500">Instructions</a>
-          <a href="/pharmacist-escalation" className="text-sm font-medium hover:text-blue-500">Escalation</a>
-          <a href="/session-summary" className="text-sm font-medium hover:text-blue-500">Summary</a>
-        </nav>
-        <main className="pt-14 min-h-screen">
-          {children}
-        </main>
-        <Analytics />
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.variable} font-sans antialiased bg-background text-foreground flex flex-col min-h-screen`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <NavigationHeader nurse={currentNurse} />
+          <main className="flex-1 flex flex-col">
+            {children}
+          </main>
+          <Analytics />
+        </ThemeProvider>
       </body>
     </html>
   )
 }
+

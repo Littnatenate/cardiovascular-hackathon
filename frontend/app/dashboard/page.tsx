@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { NavigationHeader } from '@/components/navigation-header'
 import { FilterBar, type SortOption } from '@/components/filter-bar'
 import { SessionList } from '@/components/session-list'
@@ -14,10 +14,26 @@ import { useRouter } from 'next/navigation'
 
 export default function DashboardPage() {
   const router = useRouter()
-  const [sessions, setSessions] = useState<DischargeSession[]>(dischargeSessions)
+  const [sessions, setSessions] = useState<DischargeSession[]>([])
   const [statusFilter, setStatusFilter] = useState<SessionStatus | 'all'>('all')
   const [sortBy, setSortBy] = useState<SortOption>('updated-desc')
   const { toast } = useToast()
+
+  // Load from local storage
+  useEffect(() => {
+    const saved = localStorage.getItem('medsafe_sessions')
+    if (saved) {
+      const parsed = JSON.parse(saved).map((s: any) => ({
+        ...s,
+        updatedAt: new Date(s.updatedAt),
+        createdAt: new Date(s.createdAt)
+      }))
+      setSessions(parsed)
+    } else {
+      setSessions(dischargeSessions)
+      localStorage.setItem('medsafe_sessions', JSON.stringify(dischargeSessions))
+    }
+  }, [])
 
   // Filter and sort sessions
   const filteredSessions = useMemo(() => {
@@ -52,8 +68,8 @@ export default function DashboardPage() {
   }
 
   const handleSessionTap = (session: DischargeSession) => {
-    // For the demo, all sessions lead to the Review flow
-    router.push('/medication-review')
+    // Navigate to the start of the process
+    router.push('/home-meds')
   }
 
   const handleArchive = (session: DischargeSession) => {
@@ -89,8 +105,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <NavigationHeader nurse={currentNurse} onLogout={handleLogout} />
-
       <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Page Header */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

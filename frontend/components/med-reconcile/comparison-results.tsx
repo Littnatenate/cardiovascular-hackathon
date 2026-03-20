@@ -8,6 +8,7 @@ import { MedCard } from "./med-card";
 import { ChevronLeft, ChevronRight, AlertTriangle, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { SessionTopBar } from "@/components/session-top-bar"
 
 const SORT_ORDER = ["interaction", "stopped", "changed", "uncertain", "new", "continued"];
 
@@ -57,23 +58,23 @@ export function ComparisonResults() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top header */}
-      <header className="bg-card border-b border-border px-4 md:px-6 py-3 flex items-center gap-3 sticky top-0 z-10">
-        <Activity className="w-5 h-5 text-primary shrink-0" aria-hidden />
-        <div className="flex-1 min-w-0">
-          <p className="text-xs text-muted-foreground font-medium">Patient</p>
-          <h1 className="text-sm font-bold text-foreground leading-tight truncate">
-            Margaret Thompson &mdash; Medication Comparison Results
-          </h1>
-        </div>
-        {pendingCount > 0 && (
-          <span className="shrink-0 text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200 rounded-full px-2.5 py-1">
-            {pendingCount} pending
-          </span>
-        )}
-      </header>
+      <SessionTopBar 
+        patientName="Margaret Thompson"
+        sessionId="MRN-002847"
+        step={5}
+        totalSteps={5}
+        backRoute="/medication-review"
+      />
 
       <main className="flex-1 px-4 md:px-6 py-5 max-w-2xl mx-auto w-full space-y-4">
+        {pendingCount > 0 && (
+          <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4">
+            <span className="text-sm font-semibold text-amber-800">Review Pending Items</span>
+            <span className="text-xs font-bold bg-amber-100 text-amber-700 rounded-full px-2.5 py-1">
+              {pendingCount} left
+            </span>
+          </div>
+        )}
         {/* Allergy alert (demo) */}
         <div
           role="alert"

@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { LogOut, User, Settings, ChevronDown, Shield } from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import type { Nurse } from '@/lib/types'
 
 interface NavigationHeaderProps {
@@ -18,6 +20,7 @@ interface NavigationHeaderProps {
 }
 
 export function NavigationHeader({ nurse, onLogout }: NavigationHeaderProps) {
+  const router = useRouter()
   const initials = nurse.name
     .split(' ')
     .map((n) => n[0])
@@ -28,19 +31,19 @@ export function NavigationHeader({ nurse, onLogout }: NavigationHeaderProps) {
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card shadow-sm">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo and App Name */}
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+        <Link href="/dashboard" className="flex items-center gap-3 group">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary group-hover:bg-primary/90 transition-colors">
             <Shield className="h-5 w-5 text-primary-foreground" />
           </div>
           <div className="flex flex-col">
-            <span className="text-lg font-semibold tracking-tight text-foreground">
+            <span className="text-lg font-semibold tracking-tight text-foreground group-hover:text-primary transition-colors">
               MedSafe Discharge
             </span>
             <span className="hidden text-xs text-muted-foreground sm:block">
               Discharge Session Management
             </span>
           </div>
-        </div>
+        </Link>
 
         {/* User Menu */}
         <DropdownMenu>
@@ -80,18 +83,21 @@ export function NavigationHeader({ nurse, onLogout }: NavigationHeaderProps) {
               </div>
             </div>
             <DropdownMenuSeparator className="sm:hidden" />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer">
               <User className="mr-2 h-4 w-4" />
               Profile
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer">
               <Settings className="mr-2 h-4 w-4" />
               Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={onLogout}
-              className="text-destructive focus:text-destructive"
+              onClick={() => {
+                if (onLogout) onLogout()
+                router.push('/login')
+              }}
+              className="text-destructive focus:text-destructive cursor-pointer"
             >
               <LogOut className="mr-2 h-4 w-4" />
               Log out
