@@ -1,7 +1,7 @@
-# Product Specification
+# MedSafe Discharge Tool (Product Specification)
 
 ## Overview
-A tool designed to assist in discharge counseling for cardiovascular patients, ensuring they have all necessary information and education before leaving the hospital.
+A tool designed to assist in medication reconciliation and discharge counseling, ensuring patients have clear, safe, and accurate med lists before leaving the hospital.
 
 ## Core Features
 1. Education material generation.

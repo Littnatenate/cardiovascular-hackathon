@@ -1,6 +1,6 @@
-# Discharge Counseling Tool
+# MedSafe Discharge Tool
 
-Welcome to the **Discharge Counseling Tool** repository! This project is designed for medical professionals to streamline the transition for patients leaving cardiovascular care.
+Welcome to the **MedSafe Discharge Tool** repository! This project is designed for medical professionals to streamline medication reconciliation for patients leaving hospital care.
 
 ## 🚀 Getting Started
 
