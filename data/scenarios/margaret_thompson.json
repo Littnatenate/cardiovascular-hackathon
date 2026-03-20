@@ -1,0 +1,25 @@
+{
+  "patient_name": "Margaret Thompson",
+  "age": 68,
+  "condition": "Atrial Fibrillation / Heart Failure",
+  "home_meds": [
+    { "name": "Lipitor", "dose": "20mg", "frequency": "Once daily" },
+    { "name": "Metformin", "dose": "500mg", "frequency": "Twice daily" },
+    { "name": "Lisinopril", "dose": "10mg", "frequency": "Once daily" }
+  ],
+  "discharge_meds": [
+    { "name": "Atorvastatin", "dose": "40mg", "frequency": "Once daily" },
+    { "name": "Metformin", "dose": "500mg", "frequency": "Twice daily" },
+    { "name": "Warfarin", "dose": "5mg", "frequency": "Once daily" }
+  ],
+  "expected_results": {
+    "medications": [
+      { "name": "Atorvastatin", "status": "CHANGED", "reason": "Dose increased (previously Lipitor 20mg)" },
+      { "name": "Metformin", "status": "CONTINUED" },
+      { "name": "Lisinopril", "status": "STOPPED", "reason": "Not on discharge list." },
+      { "name": "Warfarin", "status": "NEW", "reason": "Added for anticoagulation." }
+    ],
+    "escalation": true,
+    "escalation_reason": "High-risk anticoagulant (Warfarin) added."
+  }
+}

@@ -1,0 +1,156 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import { MedResult, SummaryCount } from "./types";
+import { SAMPLE_RESULTS } from "./sample-data";
+import { SummaryBar } from "./summary-bar";
+import { MedCard } from "./med-card";
+import { ChevronLeft, ChevronRight, AlertTriangle, Activity } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+const SORT_ORDER = ["interaction", "stopped", "changed", "uncertain", "new", "continued"];
+
+export function ComparisonResults() {
+  const [results, setResults] = useState<MedResult[]>(SAMPLE_RESULTS);
+  const [detailsOpen, setDetailsOpen] = useState<string | null>(null);
+  const [overrideOpen, setOverrideOpen] = useState<string | null>(null);
+
+  const sortedResults = useMemo(
+    () =>
+      [...results].sort(
+        (a, b) => SORT_ORDER.indexOf(a.status) - SORT_ORDER.indexOf(b.status)
+      ),
+    [results]
+  );
+
+  const counts: SummaryCount = useMemo(
+    () => ({
+      continued: results.filter((r) => r.status === "continued").length,
+      changed: results.filter((r) => r.status === "changed").length,
+      stopped: results.filter((r) => r.status === "stopped").length,
+      newMed: results.filter((r) => r.status === "new").length,
+      interactions: results.filter((r) => r.status === "interaction").length,
+      uncertain: results.filter((r) => r.status === "uncertain").length,
+    }),
+    [results]
+  );
+
+  const hasEscalation = counts.interactions > 0 || counts.uncertain > 0;
+  const pendingCount = results.filter(
+    (r) => !r.autoConfirmed && !r.confirmed && r.status !== "continued"
+  ).length;
+
+  function handleConfirm(id: string) {
+    setResults((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, confirmed: true } : r))
+    );
+  }
+
+  function handleOverride(id: string) {
+    setOverrideOpen(id === overrideOpen ? null : id);
+  }
+
+  function handleDetails(id: string) {
+    setDetailsOpen(id === detailsOpen ? null : id);
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Top header */}
+      <header className="bg-card border-b border-border px-4 md:px-6 py-3 flex items-center gap-3 sticky top-0 z-10">
+        <Activity className="w-5 h-5 text-primary shrink-0" aria-hidden />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground font-medium">Patient</p>
+          <h1 className="text-sm font-bold text-foreground leading-tight truncate">
+            Margaret Thompson &mdash; Medication Comparison Results
+          </h1>
+        </div>
+        {pendingCount > 0 && (
+          <span className="shrink-0 text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200 rounded-full px-2.5 py-1">
+            {pendingCount} pending
+          </span>
+        )}
+      </header>
+
+      <main className="flex-1 px-4 md:px-6 py-5 max-w-2xl mx-auto w-full space-y-4">
+        {/* Allergy alert (demo) */}
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-xl bg-[color:var(--status-stopped-bg)] border border-[color:var(--status-stopped-border)] px-4 py-3"
+        >
+          <AlertTriangle
+            className="w-4 h-4 text-[color:var(--status-stopped-badge)] mt-0.5 shrink-0"
+            aria-hidden
+          />
+          <p className="text-sm text-[color:var(--status-stopped-text)] font-medium">
+            <span className="font-bold">Allergy on file:</span> Penicillin — no medications in this list are flagged.
+          </p>
+        </div>
+
+        {/* Summary bar */}
+        <SummaryBar counts={counts} />
+
+        {/* Results list */}
+        <section aria-label="Medication results">
+          <h2 className="sr-only">Medication comparison results</h2>
+          <div className="space-y-3">
+            {sortedResults.map((result) => (
+              <MedCard
+                key={result.id}
+                result={result}
+                onConfirm={handleConfirm}
+                onOverride={handleOverride}
+                onDetails={handleDetails}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* Pharmacist escalation banner */}
+        {hasEscalation && (
+          <div
+            role="status"
+            className="flex items-start gap-2 rounded-xl bg-[color:var(--status-stopped-bg)] border border-[color:var(--status-stopped-border)] px-4 py-3"
+          >
+            <AlertTriangle
+              className="w-4 h-4 text-[color:var(--status-stopped-badge)] mt-0.5 shrink-0"
+              aria-hidden
+            />
+            <p className="text-sm text-[color:var(--status-stopped-text)]">
+              <span className="font-bold">Pharmacist escalation will be generated</span> — this case contains interactions or uncertain items.
+            </p>
+          </div>
+        )}
+      </main>
+
+      {/* Bottom navigation bar */}
+      <nav
+        className="sticky bottom-0 bg-card border-t border-border px-4 md:px-6 py-3 flex items-center justify-between gap-3"
+        aria-label="Navigation"
+      >
+        <Button
+          variant="outline"
+          className="gap-1.5 font-semibold"
+          aria-label="Back to review"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          Back to Review
+        </Button>
+
+        <Button
+          className={cn(
+            "gap-1.5 font-semibold",
+            pendingCount > 0
+              ? "bg-amber-500 hover:bg-amber-600 text-white border-0"
+              : "bg-primary hover:bg-primary/90 text-primary-foreground"
+          )}
+          aria-label="Generate patient instructions"
+        >
+          Generate Patient Instructions
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </nav>
+    </div>
+  );
+}
