@@ -1,11 +1,48 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { Pill, FileText, Plus, ArrowLeft, ArrowRight } from "lucide-react"
+import { SessionTopBar } from "@/components/session-top-bar"
+import { MedRow, type Medication } from "./med-row"
+import { ImportTextModal } from "./import-text-modal"
+
+const INITIAL_MEDS: Medication[] = []
+
+function createId() {
+  return Math.random().toString(36).substring(2, 11)
+}
+
+function parseImportedText(text: string): Medication[] {
+  // Simple line-by-line parser for demo purposes
+  return text.split("\n")
+    .filter(line => line.trim().length > 0)
+    .map(line => ({
+      id: createId(),
+      drugName: line.trim(),
+      strength: "",
+      dose: "",
+      frequency: "Once daily",
+      route: "Oral"
+    }))
+}
 
 export function DischargeMedsScreen() {
   const router = useRouter()
   const [meds, setMeds] = useState<Medication[]>(INITIAL_MEDS)
   const [showImport, setShowImport] = useState(false)
+  const [patientData, setPatientData] = useState({ name: "Sarah Johnson", id: "MRC-2024-0047" })
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem("dischargeSession")
+    if (saved) {
+      const data = JSON.parse(saved)
+      setPatientData({
+        name: data.patientName,
+        id: data.id || "MRC-2024-0047"
+      })
+    }
+  }, [])
 
   const handleUpdate = (id: string, field: keyof Medication, value: string) => {
     setMeds((prev) => prev.map((m) => (m.id === id ? { ...m, [field]: value } : m)))
@@ -41,8 +78,12 @@ export function DischargeMedsScreen() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <SessionHeader patientName="Sarah Johnson" sessionId="MRC-2024-0047" />
-      <StepProgress currentStep={1} />
+      <SessionTopBar 
+        patientName={patientData.name} 
+        sessionId={patientData.id} 
+        step={3} 
+        backRoute="/home-meds" 
+      />
 
       <main className="flex-1 px-4 py-4 space-y-4 pb-32">
         {/* Title */}
