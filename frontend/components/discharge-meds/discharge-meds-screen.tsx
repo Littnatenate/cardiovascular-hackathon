@@ -43,7 +43,16 @@ export function DischargeMedsScreen() {
     const saved = localStorage.getItem("medrecon_discharge_list")
     if (saved) {
       try {
-        setMeds(JSON.parse(saved))
+        const parsed = JSON.parse(saved);
+        // Sanitize legacy mock data
+        const fixedMeds = parsed.map((m: any, idx: number) => ({
+          ...m,
+          id: m.id || `legacy-discharge-${idx}`,
+          drugName: m.drugName || m.name || "Unknown",
+          source: m.source || "manual",
+          strength: m.strength || "100mg"
+        }));
+        setMeds(fixedMeds);
       } catch (e) {
         console.error("Failed to parse saved discharge meds", e)
       }

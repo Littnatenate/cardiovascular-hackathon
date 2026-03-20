@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { AlertCircle, ArrowRight, CalendarDays, X } from "lucide-react"
+import { AlertCircle, ArrowRight, CalendarDays, X, Sparkles } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { dischargeSessions } from "@/lib/mock-data"
 
 const WARD_OPTIONS = [
@@ -39,6 +40,7 @@ export function NewSessionForm() {
   const [dischargeDate, setDischargeDate] = useState(today)
   const [errors, setErrors] = useState<FormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDemo, setIsDemo] = useState(false)
 
   // Auto-focus on the patient name field when the form loads
   useEffect(() => {
@@ -89,10 +91,12 @@ export function NewSessionForm() {
       createdAt: new Date().toISOString(),
     }
 
-    // Clear previous session data for a clean start (AI persistence)
-    localStorage.removeItem("medrecon_home_list")
-    localStorage.removeItem("medrecon_discharge_list")
-    localStorage.removeItem("recon_results")
+    // Clear previous session data for a clean start (if not demo)
+    if (!isDemo) {
+      localStorage.removeItem("medrecon_home_list")
+      localStorage.removeItem("medrecon_discharge_list")
+      localStorage.removeItem("recon_results")
+    }
 
     sessionStorage.setItem("dischargeSession", JSON.stringify(sessionDetail))
 
@@ -141,13 +145,51 @@ export function NewSessionForm() {
       <main className="flex-1 flex items-start justify-center px-4 py-8 md:py-12">
         <div className="w-full max-w-xl">
           {/* Page heading */}
-          <div className="mb-8">
-            <h1 className="text-2xl font-semibold text-foreground text-balance">
-              New Discharge Session
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Fill in the patient details below to begin counseling.
-            </p>
+          <div className="mb-8 p-4 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5">
+            <h2 className="text-sm font-bold text-primary mb-2 flex items-center gap-2">
+              <Sparkles className="size-4" />
+              Quick-Load Demo Scenarios
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="bg-background hover:bg-primary/10 border-primary/20 text-primary font-bold"
+                onClick={() => {
+                  setPatientName("Margaret Thompson")
+                  setPatientId("S1234567A")
+                  setWard("Ward 6A – Cardiology")
+                  setBedNumber("Bed 12B")
+                  setAllergies("Penicillin, NSAIDs")
+                  setNoneKnown(false)
+                  setIsDemo(true)
+
+                  // Pre-populate Stress Test Medications (8 Home, 5 Discharge)
+                  const homeMeds = [
+                    { id: "h1", drugName: "Aspirin", strength: "100mg", dose: "1 tab", frequency: "once daily", source: "admission" },
+                    { id: "h2", drugName: "Atorvastatin", strength: "40mg", dose: "1 tab", frequency: "once daily", source: "admission" },
+                    { id: "h3", drugName: "Lisinopril", strength: "10mg", dose: "1 tab", frequency: "once daily", source: "admission" },
+                    { id: "h4", drugName: "Metformin", strength: "500mg", dose: "1 tab", frequency: "twice daily", source: "admission" },
+                    { id: "h5", drugName: "Bisoprolol", strength: "2.5mg", dose: "1 tab", frequency: "once daily", source: "admission" },
+                    { id: "h6", drugName: "Pantoprazole", strength: "40mg", dose: "1 tab", frequency: "once daily", source: "admission" },
+                    { id: "h7", drugName: "Multivitamins", strength: "1 tab", dose: "1 tab", frequency: "once daily", source: "admission" },
+                    { id: "h8", drugName: "Glucosamine", strength: "500mg", dose: "1 tab", frequency: "twice daily", source: "admission" }
+                  ];
+                  const dischargeMeds = [
+                    { id: "d1", drugName: "Aspirin", strength: "100mg", dose: "1 tab", frequency: "once daily", source: "manual" },
+                    { id: "d2", drugName: "Atorvastatin", strength: "80mg", dose: "1 tab", frequency: "once daily", source: "manual" },
+                    { id: "d3", drugName: "Lisinopril", strength: "10mg", dose: "1 tab", frequency: "once daily", source: "manual" },
+                    { id: "d4", drugName: "Clopidogrel", strength: "75mg", dose: "1 tab", frequency: "once daily", source: "manual" },
+                    { id: "d5", drugName: "Metformin", strength: "500mg", dose: "1 tab", frequency: "twice daily", source: "manual" }
+                  ];
+                  
+                  localStorage.setItem("medrecon_home_list", JSON.stringify(homeMeds));
+                  localStorage.setItem("medrecon_discharge_list", JSON.stringify(dischargeMeds));
+                }}
+              >
+                Load Case: Margaret Thompson (Cardiology)
+              </Button>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
