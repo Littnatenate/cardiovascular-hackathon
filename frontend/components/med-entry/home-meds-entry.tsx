@@ -108,7 +108,6 @@ export function HomeMedsEntry() {
         patientName={patientData.name} 
         sessionId={patientData.id} 
         step={2} 
-        backRoute="/new-session" 
       />
 
       <main className="mx-auto max-w-3xl px-4 pb-32 pt-6">

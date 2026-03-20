@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { NavigationHeader } from '@/components/navigation-header'
 import { currentNurse } from '@/lib/mock-data'
 import { ThemeProvider } from "@/components/theme-provider"
+import { ScrollToTop } from "@/components/scroll-to-top"
 import './globals.css'
 
 const inter = Inter({ 
@@ -54,6 +55,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <ScrollToTop />
           <NavigationHeader nurse={currentNurse} />
           <main className="flex-1 flex flex-col">
             {children}
