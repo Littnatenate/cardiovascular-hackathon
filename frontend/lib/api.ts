@@ -1,6 +1,6 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
-export async function reconcileMedications(homeMeds: any[], dischargeMeds: any[]) {
+export async function reconcileMedications(homeMeds: any[], dischargeMeds: any[], allergies: string[] = []) {
   try {
     const response = await fetch(`${API_BASE_URL}/reconcile`, {
       method: "POST",
@@ -10,6 +10,7 @@ export async function reconcileMedications(homeMeds: any[], dischargeMeds: any[]
       body: JSON.stringify({
         home_meds: homeMeds,
         discharge_meds: dischargeMeds,
+        allergies: allergies,
       }),
     });
 

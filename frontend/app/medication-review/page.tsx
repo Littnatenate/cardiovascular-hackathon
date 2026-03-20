@@ -78,7 +78,9 @@ export default function PreAnalysisReview() {
       const formattedHome = homeMeds.map(m => ({ name: m.name, dose: m.strength, frequency: m.frequency }))
       const formattedDischarge = dischargeMeds.map(m => ({ name: m.name, dose: m.strength, frequency: m.frequency }))
 
-      const results = await reconcileMedications(formattedHome, formattedDischarge)
+      // Pass patient allergies to the AI Safety Engine
+      const allergyList = Array.isArray(patient.allergies) ? patient.allergies : []
+      const results = await reconcileMedications(formattedHome, formattedDischarge, allergyList)
       
       localStorage.setItem('recon_results', JSON.stringify(results))
       localStorage.setItem('recon_patient', JSON.stringify(patient))

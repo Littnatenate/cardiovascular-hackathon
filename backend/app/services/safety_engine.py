@@ -90,66 +90,79 @@ def check_interactions(med_names: List[str]) -> List[Dict[str, Any]]:
 
 # ── Core Comparison ─────────────────────────────────────────────
 
-def compare_lists(home_list: list[dict], discharge_list: list[dict]) -> dict:
+def compare_lists(home_list: list[dict], discharge_list: list[dict], allergies: list[str] | None = None) -> dict:
     """
     Core function to compare home meds vs discharge meds.
     Uses RxNorm for name resolution and DDInter for interaction checking.
-    Returns categorized medications, escalation flags, and interaction warnings.
+    Checks for patient allergies against the discharge list.
     """
+    if allergies is None:
+        allergies = []
+
     results: dict = {
-        "summary": {"continued": 0, "changed": 0, "stopped": 0, "new": 0},
+        "summary": {"continued": 0, "changed": 0, "stopped": 0, "new_meds": 0},
         "new_medications": [],
         "stopped_medications": [],
         "discrepancies": [],
         "interactions": [],
+        "allergy_alerts": [],
         "escalations": [],
-        "rxnorm_mappings": []  # Track which brand names were resolved
+        "rxnorm_mappings": []
     }
+
+    # Normalize allergies for matching
+    normalized_allergies = [a.lower().strip() for a in allergies]
 
     # Build lookups using RxNorm-resolved names
     home_dict: dict[str, dict] = {}
     for m in home_list:
-        generic = normalize_med_name(m["name"])
-        original = m["name"]
-        if generic != original.lower().strip():
-            results["rxnorm_mappings"].append({
-                "original": original,
-                "resolved": generic,
-                "source": "RxNorm brand-generic mapping"
-            })
+        generic = normalize_med_name(m.get("name") or m.get("drugName") or "")
+        original = m.get("name") or m.get("drugName") or "Unknown"
+        if generic != original.lower().strip() and generic != "unknown":
+            results["rxnorm_mappings"].append({"original": original, "resolved": generic})
         home_dict[generic] = m
 
     discharge_dict: dict[str, dict] = {}
     for m in discharge_list:
-        generic = normalize_med_name(m["name"])
-        original = m["name"]
-        if generic != original.lower().strip():
-            results["rxnorm_mappings"].append({
-                "original": original,
-                "resolved": generic,
-                "source": "RxNorm brand-generic mapping"
-            })
+        name_val = m.get("name") or m.get("drugName") or ""
+        generic = normalize_med_name(name_val)
+        original = name_val
+        
+        # Check for ALLERGIES against this medication
+        for allergy in normalized_allergies:
+            if allergy in generic or allergy in original.lower():
+                alert = {
+                    "medication": original,
+                    "allergy": allergy,
+                    "severity": "CRITICAL",
+                    "reason": f"Patient has documented allergy to '{allergy}'"
+                }
+                results["allergy_alerts"].append(alert)
+                results["escalations"].append(f"🚨 CRITICAL ALLERGY: Patient is allergic to {allergy} but was prescribed {original}")
+
+        if generic != original.lower().strip() and generic != "unknown":
+            results["rxnorm_mappings"].append({"original": original, "resolved": generic})
         discharge_dict[generic] = m
 
     # ── Phase 1: Compare lists ──
     for d_name, d_med in discharge_dict.items():
         if d_name in home_dict:
             h_med = home_dict[d_name]
-            if d_med.get("dose") != h_med.get("dose") or d_med.get("frequency") != h_med.get("frequency"):
+            if d_med.get("dose") != h_med.get("dose") or d_med.get("strength") != h_med.get("strength") or d_med.get("frequency") != h_med.get("frequency"):
                 results["summary"]["changed"] += 1
                 results["discrepancies"].append({
-                    "name": d_med["name"],
+                    "name": d_med.get("name") or d_med.get("drugName"),
                     "generic_name": d_name,
-                    "home_dose": h_med.get("dose"),
+                    "home_dose": h_med.get("dose") or h_med.get("strength"),
                     "home_freq": h_med.get("frequency"),
-                    "discharge_dose": d_med.get("dose"),
+                    "discharge_dose": d_med.get("dose") or d_med.get("strength"),
                     "discharge_freq": d_med.get("frequency"),
-                    "reason": "Dose or frequency was modified."
+                    "reason": "Dose or frequency change observed."
                 })
             else:
                 results["summary"]["continued"] += 1
         else:
-            results["summary"]["new"] += 1
+            results["summary"]["new_meds"] += 1
             results["new_medications"].append({
                 **d_med,
                 "generic_name": d_name
@@ -164,11 +177,11 @@ def compare_lists(home_list: list[dict], discharge_list: list[dict]) -> dict:
                 "generic_name": h_name
             })
             results["escalations"].append(
-                f"WARNING: Previously taken {h_med['name']} ({h_name}) is NOT on discharge list."
+                f"WARNING: Previously taken {h_med.get('name') or h_med.get('drugName')} is NOT on discharge list."
             )
 
     # ── Phase 2: Check drug-drug interactions on the DISCHARGE list ──
-    discharge_names = [m["name"] for m in discharge_list]
+    discharge_names = [m.get("name") or m.get("drugName") or "" for m in discharge_list]
     interactions = check_interactions(discharge_names)
 
     for interaction in interactions:
