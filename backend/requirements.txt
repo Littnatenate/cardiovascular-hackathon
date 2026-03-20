@@ -8,3 +8,4 @@ pytest
 kagglehub
 numpy
 scikit-learn
+openai

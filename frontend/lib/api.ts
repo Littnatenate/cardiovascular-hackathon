@@ -53,12 +53,12 @@ export async function scanMedication(imageName: string) {
   }
 }
 
-export async function generateEducation(results: any) {
+export async function generateEducation(results: any, patient: any = {}) {
   try {
     const response = await fetch(`${API_BASE_URL}/generate-education`, {
       method: "POST",
       headers: secureHeaders(),
-      body: JSON.stringify({ results }),
+      body: JSON.stringify({ results, patient }),
     });
 
     if (!response.ok) {

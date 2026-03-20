@@ -37,12 +37,17 @@ async def scan_medication(data: dict):
 
 @router.post("/generate-education")
 async def generate_education(data: dict):
-    # Expects the results from the reconcile endpoint
+    # Expects "results" from reconcile AND "patient" details for personalization
     results = data.get("results", {})
+    patient = data.get("patient", {})
+    
     if not results:
         raise HTTPException(status_code=400, detail="reconciliation results are required")
     
-    education_md = generate_patient_instructions(results)
+    # Calls the new async generative education service
+    print(f"[API] Generating education for {patient.get('name', 'Unknown')}")
+    education_md = await generate_patient_instructions(results, patient)
+    print(f"[API] Generation complete. Length: {len(education_md)}")
     return {
         "status": "success",
         "education_plan": education_md

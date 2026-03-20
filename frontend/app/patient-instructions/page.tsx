@@ -4,7 +4,9 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { MedicationCard, type Medication } from "@/components/medication-card"
-import { Printer, FileText, Check, Heart, AlertCircle, ChevronLeft } from "lucide-react"
+import { Printer, FileText, Check, Heart, AlertCircle, ChevronLeft, Sparkles, Loader2 } from "lucide-react"
+import ReactMarkdown from 'react-markdown'
+import { generateEducation } from '@/lib/api'
 
 const importantReminders = [
   "Don't stop any medication without asking your doctor first.",
@@ -18,6 +20,8 @@ export default function PatientInstructions() {
   const [patientName, setPatientName] = useState("Patient")
   const [medications, setMedications] = useState<Medication[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [aiInstructions, setAiInstructions] = useState<string>("")
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false)
 
   useEffect(() => {
     // Load patient info
@@ -130,6 +134,33 @@ export default function PatientInstructions() {
   const handlePrint = () => { window.print() }
   const handleDone = () => { router.push('/session-summary') }
 
+  const handleGenerateAi = async () => {
+    setIsGeneratingAi(true)
+    try {
+      const rawResults = localStorage.getItem('recon_results')
+      const rawPatient = localStorage.getItem('recon_patient')
+      
+      const results = rawResults ? JSON.parse(rawResults) : {}
+      const patient = rawPatient ? JSON.parse(rawPatient) : {}
+      
+      if (!results || Object.keys(results).length === 0) {
+        setAiInstructions("No reconciliation data found. Please run the AI Comparison first.")
+        return
+      }
+      
+      console.log("[FE] Requesting AI Education...", { results, patient })
+      // generateEducation() already returns the education_plan string directly
+      const educationText = await generateEducation(results, patient)
+      console.log("[FE] AI Response received. Length:", educationText?.length)
+      setAiInstructions(educationText || "The AI did not return any instructions. Please try again.")
+    } catch (error) {
+      console.error("Failed to generate AI instructions:", error)
+      setAiInstructions("Could not reach AI Nurse. Please rely on the standard medication summary below.")
+    } finally {
+      setIsGeneratingAi(false)
+    }
+  }
+
   const today = new Date().toLocaleDateString("en-GB", {
     day: "2-digit", month: "long", year: "numeric"
   })
@@ -161,6 +192,34 @@ export default function PatientInstructions() {
             <p>{today}</p>
           </div>
         </header>
+
+        {/* AI Patient Instructions */}
+        <section className="mb-10 print:mb-8" aria-label="AI Summary">
+          {!aiInstructions ? (
+            <div className="rounded-xl border-2 border-primary/20 bg-card p-6 text-center shadow-sm print:hidden">
+              <Heart className="size-8 text-primary/50 mx-auto mb-3" />
+              <h2 className="text-xl font-bold mb-2">Generate AI Nurse Summary</h2>
+              <p className="text-muted-foreground mb-4">Click below to let our local Private AI generate a personalized, patient-friendly discharge guide.</p>
+              <Button onClick={handleGenerateAi} disabled={isGeneratingAi} size="lg" className="gap-2">
+                {isGeneratingAi ? (
+                  <>
+                    <Loader2 className="size-5 animate-spin" />
+                    The AI is thinking...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="size-5" />
+                    Generate AI Summary
+                  </>
+                )}
+              </Button>
+            </div>
+          ) : (
+            <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-6 md:p-8 shadow-sm print:border-gray-300 print:bg-white text-left prose prose-primary max-w-none">
+              <ReactMarkdown>{aiInstructions}</ReactMarkdown>
+            </div>
+          )}
+        </section>
 
         {/* Medications List */}
         <section className="space-y-6 mb-10" aria-label="Medications">

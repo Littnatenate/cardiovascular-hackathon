@@ -22,9 +22,13 @@ app.add_middleware(
 # ── Routes ──
 app.include_router(med_recon_router, prefix="/api/v1")
 
-@app.get("/health")
+@app.get("/")
+async def root():
+    return {"message": "MedSafe Backend is live!", "version": "1.0.0"}
+
+@app.get("/api/v1/health")
 async def health_check():
-    return {"status": "ok", "service": "MedSafe AI"}
+    return {"status": "ok", "service": "MedSafe AI Engine"}
 
 if __name__ == "__main__":
     import uvicorn

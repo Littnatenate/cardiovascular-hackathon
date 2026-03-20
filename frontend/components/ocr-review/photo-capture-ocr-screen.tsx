@@ -71,7 +71,6 @@ export function PhotoCaptureOcrScreen() {
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const [addedMeds, setAddedMeds] = useState<AddedMed[]>([]);
   const [justAdded, setJustAdded] = useState(false);
-  const router = useRouter();
 
   const handleCapture = useCallback(() => {
     setCaptureState("preview");
