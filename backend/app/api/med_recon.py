@@ -40,13 +40,15 @@ async def generate_education(data: dict):
     # Expects "results" from reconcile AND "patient" details for personalization
     results = data.get("results", {})
     patient = data.get("patient", {})
+    target_lang = data.get("target_lang", "English")
+    caregiver_lang = data.get("caregiver_lang", "None")
     
     if not results:
         raise HTTPException(status_code=400, detail="reconciliation results are required")
     
     # Calls the new async generative education service
-    print(f"[API] Generating education for {patient.get('name', 'Unknown')}")
-    education_md = await generate_patient_instructions(results, patient)
+    print(f"[API] Generating {target_lang} education (Caregiver: {caregiver_lang}) for {patient.get('name', 'Unknown')}")
+    education_md = await generate_patient_instructions(results, patient, target_lang, caregiver_lang)
     print(f"[API] Generation complete. Length: {len(education_md)}")
     return {
         "status": "success",

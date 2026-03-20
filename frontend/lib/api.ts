@@ -53,12 +53,17 @@ export async function scanMedication(imageName: string) {
   }
 }
 
-export async function generateEducation(results: any, patient: any = {}) {
+export async function generateEducation(results: any, patient: any = {}, targetLang: string = "English", caregiverLang: string = "None") {
   try {
     const response = await fetch(`${API_BASE_URL}/generate-education`, {
       method: "POST",
       headers: secureHeaders(),
-      body: JSON.stringify({ results, patient }),
+      body: JSON.stringify({ 
+        results, 
+        patient,
+        target_lang: targetLang,
+        caregiver_lang: caregiverLang
+      }),
     });
 
     if (!response.ok) {

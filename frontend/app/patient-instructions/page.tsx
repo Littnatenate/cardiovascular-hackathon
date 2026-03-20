@@ -22,6 +22,8 @@ export default function PatientInstructions() {
   const [isLoading, setIsLoading] = useState(true)
   const [aiInstructions, setAiInstructions] = useState<string>("")
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
+  const [targetLang, setTargetLang] = useState("English")
+  const [caregiverLang, setCaregiverLang] = useState("None")
 
   useEffect(() => {
     // Load patient info
@@ -148,9 +150,9 @@ export default function PatientInstructions() {
         return
       }
       
-      console.log("[FE] Requesting AI Education...", { results, patient })
+      console.log("[FE] Requesting AI Education...", { results, patient, targetLang, caregiverLang })
       // generateEducation() already returns the education_plan string directly
-      const educationText = await generateEducation(results, patient)
+      const educationText = await generateEducation(results, patient, targetLang, caregiverLang)
       console.log("[FE] AI Response received. Length:", educationText?.length)
       setAiInstructions(educationText || "The AI did not return any instructions. Please try again.")
     } catch (error) {
@@ -199,17 +201,46 @@ export default function PatientInstructions() {
             <div className="rounded-xl border-2 border-primary/20 bg-card p-6 text-center shadow-sm print:hidden">
               <Heart className="size-8 text-primary/50 mx-auto mb-3" />
               <h2 className="text-xl font-bold mb-2">Generate AI Nurse Summary</h2>
-              <p className="text-muted-foreground mb-4">Click below to let our local Private AI generate a personalized, patient-friendly discharge guide.</p>
+              <p className="text-muted-foreground mb-6">Click below to let our local Private AI generate a personalized, patient-friendly discharge guide.</p>
+              
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+                <div className="flex flex-col text-left">
+                  <label className="text-sm font-semibold mb-1 text-foreground">Patient Instruction Language</label>
+                  <select 
+                    value={targetLang}
+                    onChange={(e) => setTargetLang(e.target.value)}
+                    className="flex h-10 w-[200px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="English">English</option>
+                    <option value="Mandarin">Mandarin (中文)</option>
+                    <option value="Malay">Malay (Bahasa Melayu)</option>
+                    <option value="Tamil">Tamil (தமிழ்)</option>
+                  </select>
+                </div>
+                <div className="flex flex-col text-left">
+                  <label className="text-sm font-semibold mb-1 text-foreground">Caregiver Summary Language</label>
+                  <select 
+                    value={caregiverLang}
+                    onChange={(e) => setCaregiverLang(e.target.value)}
+                    className="flex h-10 w-[200px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="None">None (English Only)</option>
+                    <option value="Tagalog">Tagalog (Filipino FDW)</option>
+                    <option value="Bahasa Indonesia">Bahasa Indonesia (FDW)</option>
+                  </select>
+                </div>
+              </div>
+
               <Button onClick={handleGenerateAi} disabled={isGeneratingAi} size="lg" className="gap-2">
                 {isGeneratingAi ? (
                   <>
                     <Loader2 className="size-5 animate-spin" />
-                    The AI is thinking...
+                    The AI is translating...
                   </>
                 ) : (
                   <>
                     <Sparkles className="size-5" />
-                    Generate AI Summary
+                    Generate Bilingual Summary
                   </>
                 )}
               </Button>

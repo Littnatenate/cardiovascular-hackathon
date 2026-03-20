@@ -27,7 +27,12 @@ PROMPT_TEMPLATE = _load_prompt_template()
 
 # ── Generative Service ──────────
 
-async def generate_patient_instructions(comparison_results: Dict[str, Any], patient_data: Dict[str, Any] = None) -> str:
+async def generate_patient_instructions(
+    comparison_results: Dict[str, Any], 
+    patient_data: Dict[str, Any] = None,
+    target_lang: str = "English",
+    caregiver_lang: str = "None"
+) -> str:
     """
     Generates empathetic, patient-friendly discharge instructions using a Local/Remote LLM.
     Uses OpenAI-compatible protocol (LM Studio, Vertex AI, etc.)
@@ -67,6 +72,8 @@ async def generate_patient_instructions(comparison_results: Dict[str, Any], pati
                         "2. Use Markdown alerts (e.g. > [!IMPORTANT]) for life-saving warnings. "
                         "3. Use the provided 'VERIFIED CLINICAL FACTS' for all medical claims. "
                         "4. Maintain a professional, precise, and efficient tone (the Singapore clinical vibe). "
+                        f"5. The PRIMARY patient guide MUST be written in {target_lang}. "
+                        f"6. If the caregiver language is not 'None' (currently: {caregiver_lang}), YOU MUST append a separate 'Caregiver Summary' section at the very end, translating the key action items into {caregiver_lang}. "
                         "Start your response immediately with the header '# Your Personal Medication Guide'."
                     )
                 },
