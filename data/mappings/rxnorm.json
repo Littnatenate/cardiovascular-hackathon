@@ -32,10 +32,14 @@
     "symbicort": "budesonide/formoterol",
     "spiriva": "tiotropium",
     "ventolin": "salbutamol",
-    "proventil": "salbutamol"
+    "proventil": "salbutamol",
+    "augmentin": "amoxicillin/clavulanate"
   },
   "generic_aliases": {
     "albuterol": "salbutamol",
-    "acetaminophen": "paracetamol"
+    "acetaminophen": "paracetamol",
+    "amoxicillin": "penicillin",
+    "ampicillin": "penicillin",
+    "amoxicillin/clavulanate": "penicillin"
   }
 }

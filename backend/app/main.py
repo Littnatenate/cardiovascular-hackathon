@@ -1,19 +1,30 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.med_recon import router as med_recon_router
+from app.middleware.security import SecurityMiddleware
 
-app = FastAPI(title="MedSafe API")
+app = FastAPI(title="MedSafe API", docs_url=None, redoc_url=None)  # Disable public docs in production
 
-# Add CORS so the Next.js frontend can talk to this backend
+# ── Security Middleware (API Key + IP Whitelist + Rate Limit) ──
+app.add_middleware(SecurityMiddleware)
+
+# ── CORS — Only allow trusted frontend origins ──
+ALLOWED_ORIGINS = os.getenv("MEDSAFE_CORS_ORIGINS", "http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # For hackathon simplicity
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "X-API-Key"],
 )
 
+# ── Routes ──
 app.include_router(med_recon_router, prefix="/api/v1")
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "service": "MedSafe AI"}
 
 if __name__ == "__main__":
     import uvicorn

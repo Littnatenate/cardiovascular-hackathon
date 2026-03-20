@@ -1,7 +1,7 @@
-# Safety Engine Logic — Powered by RxNorm + DDInter
 import json
 import os
-from typing import List, Dict, Any
+import difflib
+from typing import List, Dict, Any, Optional
 from itertools import combinations
 
 # ── Dataset Loading ──────────────────────────────────────────────
@@ -32,17 +32,27 @@ STOMACH_INTERACTIONS: list[dict] = _ddinter_stomach.get("interactions", [])
 def resolve_to_generic(name: str) -> str:
     """
     Resolves a drug name to its canonical generic name using RxNorm data.
-    Example: "Lipitor" -> "atorvastatin", "Atorvastatin" -> "atorvastatin"
+    Includes fuzzy matching for typos.
     """
     lower = name.lower().strip()
 
-    # Check brand-to-generic mapping
+    # 1. Exact match in brands
     if lower in BRAND_TO_GENERIC:
         return BRAND_TO_GENERIC[lower]
 
-    # Check alias mapping (e.g. albuterol -> salbutamol)
+    # 2. Exact match in aliases
     if lower in GENERIC_ALIASES:
         return GENERIC_ALIASES[lower]
+
+    # 3. Fuzzy match in brands (handles typos like "Lipitir")
+    brand_matches = difflib.get_close_matches(lower, BRAND_TO_GENERIC.keys(), n=1, cutoff=0.8)
+    if brand_matches:
+        return BRAND_TO_GENERIC[brand_matches[0]]
+
+    # 4. Fuzzy match in aliases
+    alias_matches = difflib.get_close_matches(lower, GENERIC_ALIASES.keys(), n=1, cutoff=0.8)
+    if alias_matches:
+        return GENERIC_ALIASES[alias_matches[0]]
 
     # Already a generic or unknown — return as-is
     return lower
@@ -100,7 +110,7 @@ def compare_lists(home_list: list[dict], discharge_list: list[dict], allergies: 
         allergies = []
 
     results: dict = {
-        "summary": {"continued": 0, "changed": 0, "stopped": 0, "new_meds": 0},
+        "summary": {"continued": 0, "changed": 0, "stopped": 0, "new": 0},
         "new_medications": [],
         "stopped_medications": [],
         "discrepancies": [],
@@ -162,7 +172,7 @@ def compare_lists(home_list: list[dict], discharge_list: list[dict], allergies: 
             else:
                 results["summary"]["continued"] += 1
         else:
-            results["summary"]["new_meds"] += 1
+            results["summary"]["new"] += 1
             results["new_medications"].append({
                 **d_med,
                 "generic_name": d_name

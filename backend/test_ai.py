@@ -89,6 +89,33 @@ print("\n  Edward Chen: ALL ASSERTIONS PASSED")
 
 print()
 print("=" * 60)
+print("TEST 5: Allergy Detection")
+print("=" * 60)
+
+allergy_test_meds = [{"name": "Amoxicillin", "dose": "500mg", "frequency": "TDS"}]
+patient_allergies = ["Penicillin"]
+
+# Amoxicillin is a penicillin-class drug. RxNorm should help match it.
+results_allergy = compare_lists([], allergy_test_meds, patient_allergies)
+print(f"  Allergy Alerts: {json.dumps(results_allergy['allergy_alerts'], indent=4)}")
+
+assert len(results_allergy["allergy_alerts"]) > 0, "Expected allergy alert for Amoxicillin/Penicillin"
+print("\n  Allergy Detection: ALL ASSERTIONS PASSED")
+
+print()
+print("=" * 60)
+print("TEST 6: Fuzzy Matching (Typos)")
+print("=" * 60)
+
+typo_test = "Lipitir" # Typo for Lipitor
+resolved_typo = resolve_to_generic(typo_test)
+print(f"  Typo: '{typo_test}' -> Resolved: {resolved_typo}")
+
+assert resolved_typo == "atorvastatin", f"Expected 'atorvastatin' for typo '{typo_test}'"
+print("\n  Fuzzy Matching: ALL ASSERTIONS PASSED")
+
+print()
+print("=" * 60)
 if all_pass:
     print("ALL TESTS PASSED!")
 else:
