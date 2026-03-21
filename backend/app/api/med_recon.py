@@ -40,6 +40,7 @@ from app.services.pdf_generator import pdf_engine
 from fastapi.responses import Response
 
 @router.post("/generate-education")
+@router.post("/educate")
 async def generate_education(data: dict):
     # Expects "results" from reconcile AND "patient" details for personalization
     results = data.get("results", {})
