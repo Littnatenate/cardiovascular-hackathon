@@ -31,6 +31,10 @@ Use Markdown alert blocks for critical life-saving info:
 - Frame the tone as professional, efficient, and precise.
 - Use metric units (mg, ml, etc.).
 
+### 5. Pharmacist Verification (Human-in-the-Loop)
+At the very end of your response, explicitly output a **Clinical Confidence Score** (0-100%) indicating your confidence in the safety profile of these instructions.
+Following the score, provide a **Pharmacist Checklist** (3-4 bullet points) highlighting critical interactions or missing data that a human pharmacist MUST review before this is handed to the patient.
+
 ## Inputs:
 ### Patient Profile & Med Reconciliation:
 {{notes}}
