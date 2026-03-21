@@ -108,7 +108,7 @@ export function MedCard({ result, onConfirm, onOverride, onDetails }: MedCardPro
                 isContinued
                   ? "bg-[color:var(--status-continued-bg)] border-[color:var(--status-continued-border)]"
                   : result.needsConfirmation
-                  ? "bg-amber-50 border-amber-200"
+                  ? "bg-amber-500/10 border-amber-500/30"
                   : "bg-[color:var(--status-new-bg)] border-[color:var(--status-new-border)]"
               )}
             >

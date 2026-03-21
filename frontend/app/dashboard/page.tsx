@@ -64,11 +64,24 @@ export default function DashboardPage() {
   }, [sessions, statusFilter, sortBy])
 
   const handleNewSession = () => {
+    sessionStorage.removeItem('dischargeSession');
     router.push('/new-session')
   }
 
   const handleSessionTap = (session: DischargeSession) => {
     // Navigate to the start of the process
+    sessionStorage.setItem('dischargeSession', JSON.stringify({
+      id: session.id,
+      patientName: session.patientName,
+      patientId: (session as any).mrn || "N/A",
+      ward: session.ward,
+      bedNumber: session.bed,
+    }));
+    if (session.status === 'completed' || session.status === 'escalated') {
+      sessionStorage.setItem('sessionMaxStep', "5");
+    } else {
+      sessionStorage.removeItem('sessionMaxStep');
+    }
     router.push('/home-meds')
   }
 

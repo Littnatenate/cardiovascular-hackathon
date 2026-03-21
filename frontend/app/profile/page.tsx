@@ -1,12 +1,15 @@
+"use client"
+
 import { ArrowLeft, User } from "lucide-react"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 export default function ProfilePage() {
+  const router = useRouter()
   return (
     <div className="min-h-screen bg-background p-6 max-w-2xl mx-auto">
-      <Link href="/dashboard" className="text-sm font-medium text-muted-foreground flex items-center gap-1.5 mb-8 hover:text-foreground transition-colors">
-        <ArrowLeft className="w-4 h-4" /> Back to Dashboard
-      </Link>
+      <button onClick={() => router.back()} className="text-sm font-medium text-muted-foreground flex items-center gap-1.5 mb-8 hover:text-foreground transition-colors">
+        <ArrowLeft className="w-4 h-4" /> Go Back
+      </button>
       
       <div className="flex items-center gap-4 mb-8">
         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
