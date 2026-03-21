@@ -35,6 +35,10 @@ async def scan_medication(data: dict):
         "medications": ocr_results
     }
 
+from app.services.whatsapp_generator import generate_whatsapp_summary
+from app.services.pdf_generator import pdf_engine
+from fastapi.responses import Response
+
 @router.post("/generate-education")
 async def generate_education(data: dict):
     # Expects "results" from reconcile AND "patient" details for personalization
@@ -54,4 +58,41 @@ async def generate_education(data: dict):
         "status": "success",
         "education_plan": education_md
     }
+
+@router.post("/whatsapp-summary")
+async def create_whatsapp_summary(data: dict):
+    # Expects the raw Markdown from the AI, so we don't have to rebuild it
+    instructions_md = data.get("instructions_md", "")
+    caregiver_lang = data.get("caregiver_lang", "None")
+    
+    if not instructions_md:
+        raise HTTPException(status_code=400, detail="instructions_md is required to generate summary")
+        
+    print(f"[API] Generating WhatsApp summary. Language: {caregiver_lang}")
+    whatsapp_text = await generate_whatsapp_summary(instructions_md, caregiver_lang)
+    return {
+        "status": "success",
+        "summary": whatsapp_text
+    }
+
+@router.post("/export-pdf")
+async def export_pdf(data: dict):
+    # Expects raw Markdown to convert directly to PDF
+    instructions_md = data.get("instructions_md", "")
+    patient_name = data.get("patient_name", "Patient")
+    
+    if not instructions_md:
+        raise HTTPException(status_code=400, detail="instructions_md is required for PDF export")
+        
+    print(f"[API] Generating PDF for {patient_name}")
+    pdf_bytes = pdf_engine.generate_pdf(instructions_md, patient_name)
+    
+    if not pdf_bytes:
+        raise HTTPException(status_code=500, detail="Failed to convert Markdown to PDF")
+        
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="MedSafe_Discharge_{patient_name.replace(" ", "_")}.pdf"'}
+    )
 

@@ -4,9 +4,9 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { MedicationCard, type Medication } from "@/components/medication-card"
-import { Printer, FileText, Check, Heart, AlertCircle, ChevronLeft, Sparkles, Loader2, ShieldCheck } from "lucide-react"
+import { Printer, FileText, Check, Heart, AlertCircle, ChevronLeft, Sparkles, Loader2, ShieldCheck, MessageCircle, Copy } from "lucide-react"
 import ReactMarkdown from 'react-markdown'
-import { generateEducation } from '@/lib/api'
+import { generateEducation, generateWhatsappSummary, exportPdf } from '@/lib/api'
 
 const importantReminders = [
   "Don't stop any medication without asking your doctor first.",
@@ -24,6 +24,8 @@ export default function PatientInstructions() {
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
   const [targetLang, setTargetLang] = useState("English")
   const [caregiverLang, setCaregiverLang] = useState("None")
+  const [whatsappSummary, setWhatsappSummary] = useState<string>("")
+  const [isCopied, setIsCopied] = useState(false)
 
   useEffect(() => {
     // Load patient info
@@ -155,11 +157,55 @@ export default function PatientInstructions() {
       const educationText = await generateEducation(results, patient, targetLang, caregiverLang)
       console.log("[FE] AI Response received. Length:", educationText?.length)
       setAiInstructions(educationText || "The AI did not return any instructions. Please try again.")
+
+      if (educationText) {
+        // Automatically generate the WhatsApp summary in the background
+        console.log("[FE] Requesting WhatsApp Summary...")
+        try {
+           const waText = await generateWhatsappSummary(educationText, caregiverLang)
+           setWhatsappSummary(waText)
+        } catch (waErr) {
+           console.error("WhatsApp generation failed:", waErr)
+        }
+      }
+
     } catch (error) {
       console.error("Failed to generate AI instructions:", error)
       setAiInstructions("Could not reach AI Nurse. Please rely on the standard medication summary below.")
     } finally {
       setIsGeneratingAi(false)
+    }
+  }
+
+  const handleCopyWhatsapp = () => {
+    navigator.clipboard.writeText(whatsappSummary)
+    setIsCopied(true)
+    setTimeout(() => setIsCopied(false), 2000)
+  }
+
+  const [isExportingPdf, setIsExportingPdf] = useState(false)
+
+  const handleExportPdf = async () => {
+    if (!aiInstructions) {
+      alert("Please generate the AI summary first before exporting to PDF.")
+      return
+    }
+    setIsExportingPdf(true)
+    try {
+      const pdfBlob = await exportPdf(aiInstructions, patientName)
+      const url = window.URL.createObjectURL(pdfBlob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `MedSafe_Discharge_${patientName.replace(/\s+/g, '_')}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error("Failed to export PDF:", error)
+      alert("Failed to generate PDF. Please try again.")
+    } finally {
+      setIsExportingPdf(false)
     }
   }
 
@@ -252,6 +298,30 @@ export default function PatientInstructions() {
                 Verified by HSA & FDA Data
               </div>
               <ReactMarkdown>{aiInstructions}</ReactMarkdown>
+              
+              {/* WhatsApp Summary Box (Hidden in print) */}
+              {whatsappSummary && (
+                <div className="mt-8 rounded-xl border-2 border-green-500/30 bg-green-50 p-6 shadow-sm print:hidden">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2 text-green-700 font-bold">
+                      <MessageCircle className="size-5" />
+                      <h3>WhatsApp Family Summary</h3>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="gap-2 bg-white hover:bg-green-100 text-green-700 border-green-200"
+                      onClick={handleCopyWhatsapp}
+                    >
+                      {isCopied ? <Check className="size-4" /> : <Copy className="size-4" />}
+                      {isCopied ? "Copied!" : "Copy Text"}
+                    </Button>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border border-green-100 whitespace-pre-wrap font-sans text-sm text-gray-800 shadow-inner">
+                    {whatsappSummary}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -312,11 +382,21 @@ export default function PatientInstructions() {
           <Button
             size="lg"
             variant="outline"
-            onClick={handlePrint}
+            onClick={handleExportPdf}
+            disabled={isExportingPdf}
             className="gap-2 text-base px-6"
           >
-            <FileText className="size-5" />
-            Save as PDF
+            {isExportingPdf ? (
+               <>
+                 <Loader2 className="size-5 animate-spin" />
+                 Saving...
+               </>
+            ) : (
+               <>
+                 <FileText className="size-5" />
+                 Save as PDF
+               </>
+            )}
           </Button>
           <Button
             size="lg"
