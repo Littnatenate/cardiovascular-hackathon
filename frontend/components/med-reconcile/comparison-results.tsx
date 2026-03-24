@@ -6,7 +6,7 @@ import { MedResult, SummaryCount, MedStatus } from "./types";
 import { SAMPLE_RESULTS } from "./sample-data";
 import { SummaryBar } from "./summary-bar";
 import { MedCard } from "./med-card";
-import { ChevronLeft, ChevronRight, AlertTriangle, Activity, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlertTriangle, Activity, Check, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { SessionTopBar } from "@/components/session-top-bar";
@@ -65,6 +65,7 @@ export function ComparisonResults() {
             id: `stop-${m.name}`,
             status: "stopped",
             drugName: m.name,
+            strength: m.strength,
             summary: `Not found on discharge list. (Home dose: ${m.dose})`,
             confidence: "high",
             needsConfirmation: true,
@@ -81,6 +82,7 @@ export function ComparisonResults() {
             id: `diff-${m.name}`,
             status: "changed",
             drugName: m.name,
+            strength: m.discharge_strength || m.strength,
             originalNames: { home: m.name, discharge: m.name },
             summary: `${m.reason} Home: ${m.home_dose} ${m.home_freq} ➔ Discharge: ${m.discharge_dose} ${m.discharge_freq}`,
             confidence: "high",
@@ -98,6 +100,7 @@ export function ComparisonResults() {
             id: `new-${m.name}`,
             status: "new",
             drugName: m.name,
+            strength: m.strength,
             summary: `Newly prescribed: ${m.dose} ${m.frequency}`,
             confidence: "high",
             needsConfirmation: true,
@@ -135,12 +138,12 @@ export function ComparisonResults() {
 
   const hasEscalation = counts.interactions > 0 || counts.uncertain > 0;
   const pendingCount = results.filter(
-    (r) => !r.autoConfirmed && !r.confirmed && r.status !== "continued"
+    (r) => !r.autoConfirmed && !r.confirmed && r.status !== "continued" && !r.overridden
   ).length;
 
   function handleConfirm(id: string) {
     setResults((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, confirmed: true } : r))
+      prev.map((r) => (r.id === id ? { ...r, confirmed: true, overridden: false } : r))
     );
   }
 
@@ -148,9 +151,17 @@ export function ComparisonResults() {
     setOverrideOpen(id);
   }
 
+  function handleRestore(id: string) {
+    setResults((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, confirmed: false, overridden: false } : r))
+    );
+  }
+
   function confirmOverride() {
     if (!overrideOpen) return;
-    setResults((prev) => prev.filter((r) => r.id !== overrideOpen));
+    setResults((prev) => 
+      prev.map((r) => (r.id === overrideOpen ? { ...r, overridden: true, confirmed: false } : r))
+    );
     setOverrideOpen(null);
   }
 
@@ -163,7 +174,7 @@ export function ComparisonResults() {
     <div className="min-h-screen bg-background flex flex-col">
       <SessionTopBar 
         patientName={patient?.name || "Margaret Thompson"}
-        sessionId={patient?.mrn || "MRN-002847"}
+        patientId={patient?.mrn || patient?.id || "S1234567A"}
         step={5}
       />
 
@@ -219,7 +230,7 @@ export function ComparisonResults() {
           <div className="space-y-6">
             {SORT_ORDER.map((status) => {
               // Get pending items for this status block
-              const groupItems = results.filter((r) => r.status === status && !r.confirmed && !r.autoConfirmed && r.status !== "continued");
+              const groupItems = results.filter((r) => r.status === status && !r.confirmed && !r.autoConfirmed && r.status !== "continued" && !r.overridden);
               if (groupItems.length === 0) return null;
 
               return (
@@ -246,18 +257,39 @@ export function ComparisonResults() {
         </section>
 
         {/* Verified / Confirmed Pile */}
-        {results.some(r => r.confirmed || r.autoConfirmed || r.status === "continued") && (
+        {results.some(r => (r.confirmed || r.autoConfirmed || r.status === "continued") && !r.overridden) && (
           <section className="mt-8 border-t pt-6" aria-label="Verified medications">
             <h3 className="text-sm font-bold uppercase tracking-wider text-green-600 mb-3 flex items-center gap-2">
               <Check className="w-4 h-4" /> Verified Medications
             </h3>
             <div className="space-y-3 opacity-80">
-              {results.filter(r => r.confirmed || r.autoConfirmed || r.status === "continued").map((result) => (
+              {results.filter(r => (r.confirmed || r.autoConfirmed || r.status === "continued") && !r.overridden).map((result) => (
                 <MedCard
                   key={result.id}
                   result={result}
                   onConfirm={handleConfirm}
                   onOverride={handleOverride}
+                  onRestore={handleRestore}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Dismissed Pile */}
+        {results.some(r => r.overridden) && (
+          <section className="mt-8 border-t pt-6" aria-label="Dismissed medications">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+              <Trash2 className="w-4 h-4" /> Dismissed
+            </h3>
+            <div className="space-y-3 opacity-60 grayscale transition-all hover:grayscale-0 hover:opacity-100">
+              {results.filter(r => r.overridden).map((result) => (
+                <MedCard
+                  key={result.id}
+                  result={result}
+                  onConfirm={handleConfirm}
+                  onOverride={handleOverride}
+                  onRestore={handleRestore}
                 />
               ))}
             </div>

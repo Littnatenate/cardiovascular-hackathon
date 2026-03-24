@@ -15,12 +15,12 @@ import { useState } from "react"
 
 interface SessionTopBarProps {
   patientName: string
-  sessionId: string
+  patientId: string
   step: number
   totalSteps?: number
 }
 
-export function SessionTopBar({ patientName, sessionId, step, totalSteps = 6 }: SessionTopBarProps) {
+export function SessionTopBar({ patientName, patientId, step, totalSteps = 6 }: SessionTopBarProps) {
   const [open, setOpen] = useState(false)
   const progressPercent = (step / totalSteps) * 100
 
@@ -47,7 +47,7 @@ export function SessionTopBar({ patientName, sessionId, step, totalSteps = 6 }: 
 
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-foreground truncate">{patientName}</p>
-          <p className="text-xs text-muted-foreground">{sessionId}</p>
+          <p className="text-xs text-muted-foreground uppercase">{patientId}</p>
         </div>
 
         <div className="flex items-center gap-2">

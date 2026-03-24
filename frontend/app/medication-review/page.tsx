@@ -40,20 +40,22 @@ export default function PreAnalysisReview() {
   useEffect(() => {
     // Load patient data from session (friend's feature)
     const savedSession = sessionStorage.getItem("dischargeSession")
+    let activeId = "MRC-2024-0047";
     if (savedSession) {
       const data = JSON.parse(savedSession)
+      if (data.id) activeId = data.id;
       setPatient({
-        name: data.patientName,
+        name: data.patientName || "Margaret Thompson",
         dob: "04/12/1951",
-        mrn: data.patientId || "MRN-002847",
+        mrn: data.patientId || data.id || "S1234567A",
         allergies: (data.allergies && data.allergies.length > 0) ? data.allergies : ["None Known"],
         dischargeDate: data.dischargeDate || "Mar 19, 2026",
       })
     }
 
     // Load medication lists from localStorage (AI persistence)
-    const rawHome = localStorage.getItem('medrecon_home_list')
-    const rawDischarge = localStorage.getItem('medrecon_discharge_list')
+    const rawHome = localStorage.getItem(`medrecon_home_list_${activeId}`)
+    const rawDischarge = localStorage.getItem(`medrecon_discharge_list_${activeId}`)
     
     if (rawHome) {
       const parsed = JSON.parse(rawHome)
@@ -125,7 +127,7 @@ export default function PreAnalysisReview() {
     <SessionLayout>
       <SessionTopBar 
         patientName={patient.name} 
-        sessionId={patient.mrn} 
+        patientId={patient.mrn} 
         step={4} 
       />
       {/* Page body */}

@@ -4,17 +4,18 @@ import { useState } from "react";
 import { MedResult } from "./types";
 import { STATUS_CONFIG, ConfidenceBadge } from "./status-config";
 import { cn } from "@/lib/utils";
-import { Check, Trash2, Info, ChevronDown, ChevronUp, MessageSquare } from "lucide-react";
+import { Check, Trash2, Info, ChevronDown, ChevronUp, MessageSquare, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface MedCardProps {
   result: MedResult;
   onConfirm: (id: string) => void;
   onOverride: (id: string) => void;
-  onDetails: (id: string) => void;
+  onRestore?: (id: string) => void;
+  onDetails?: (id: string) => void;
 }
 
-export function MedCard({ result, onConfirm, onOverride }: Omit<MedCardProps, 'onDetails'>) {
+export function MedCard({ result, onConfirm, onOverride, onRestore }: Omit<MedCardProps, 'onDetails'>) {
   const [expanded, setExpanded] = useState(result.status !== "continued");
   const cfg = STATUS_CONFIG[result.status];
 
@@ -36,14 +37,14 @@ export function MedCard({ result, onConfirm, onOverride }: Omit<MedCardProps, 'o
         {/* Card Header Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            {/* Subtle inline icon */}
-            <span className={cn("shrink-0", cfg.textClass)} aria-hidden>
-              {cfg.icon}
-            </span>
-
             <span className="text-base font-bold text-foreground truncate">
               {result.drugName}
             </span>
+            {result.strength && (
+              <span className="text-sm text-muted-foreground ml-2">
+                ({result.strength})
+              </span>
+            )}
             
             {isContinued && (
               <span className="text-xs font-semibold text-[color:var(--status-continued-badge)] bg-[color:var(--status-continued-bg)] border border-[color:var(--status-continued-border)] px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -110,8 +111,8 @@ export function MedCard({ result, onConfirm, onOverride }: Omit<MedCardProps, 'o
             </div>
           )}
 
-          {/* Action buttons — hide for confirmed */}
-          {!isContinued && (
+          {/* Action buttons — hide for confirmed unless onRestore */}
+          {!isContinued && !result.overridden ? (
             <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t mt-3">
               <Button
                 size="sm"
@@ -128,12 +129,27 @@ export function MedCard({ result, onConfirm, onOverride }: Omit<MedCardProps, 'o
                 variant="ghost"
                 className="gap-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                 onClick={() => onOverride(result.id)}
-                aria-label={`Delete ${result.drugName}`}
+                aria-label={`Dismiss ${result.drugName}`}
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 Dismiss
               </Button>
             </div>
+          ) : (
+            onRestore && (result.confirmed || result.overridden) && (
+              <div className="flex justify-end pt-2 border-t mt-3">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="gap-1.5 text-muted-foreground hover:text-foreground hover:bg-muted"
+                  onClick={() => onRestore(result.id)}
+                  aria-label={`Restore ${result.drugName}`}
+                >
+                  <Undo2 className="w-3.5 h-3.5 mr-0.5" />
+                  Restore to List
+                </Button>
+              </div>
+            )
           )}
         </div>
       )}

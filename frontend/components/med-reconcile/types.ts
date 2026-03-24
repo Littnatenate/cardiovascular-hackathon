@@ -6,6 +6,7 @@ export interface MedResult {
   id: string;
   status: MedStatus;
   drugName: string;
+  strength?: string;
   originalNames?: { home?: string; discharge?: string };
   summary: string;
   confidence: Confidence;

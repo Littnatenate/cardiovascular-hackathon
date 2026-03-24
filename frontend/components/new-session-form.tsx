@@ -42,6 +42,7 @@ export function NewSessionForm() {
   const [errors, setErrors] = useState<FormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDemo, setIsDemo] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
 
   // Auto-focus on the patient name field when the form loads, prefill if session exists
   useEffect(() => {
@@ -58,6 +59,7 @@ export function NewSessionForm() {
            setAllergies(data.allergies.join(", "))
            setNoneKnown(data.allergies.length === 0)
         }
+        setIsEditing(true)
       } catch (e) {}
     }
   }, [])
@@ -95,19 +97,30 @@ export function NewSessionForm() {
     await new Promise((r) => setTimeout(r, 400))
 
     // Store session data for use in subsequent screens
+    let existingSessionId = `SESSION-${Date.now()}`
+    let existingCreatedAt = new Date().toISOString()
+    
+    if (isEditing) {
+       try {
+         const existing = JSON.parse(sessionStorage.getItem('dischargeSession') || '{}')
+         if (existing.id) existingSessionId = existing.id
+         if (existing.createdAt) existingCreatedAt = existing.createdAt
+       } catch (e) {}
+    }
+    
     const sessionDetail = {
-      id: `SESSION-${Date.now()}`,
+      id: existingSessionId,
       patientName: patientName.trim(),
       patientId: patientId.trim(),
       ward,
       bedNumber,
       allergies: noneKnown ? [] : allergies.split(",").map((a) => a.trim()).filter(Boolean),
       dischargeDate,
-      createdAt: new Date().toISOString(),
+      createdAt: existingCreatedAt,
     }
 
-    // Clear previous session data for a clean start (if not demo)
-    if (!isDemo) {
+    // Clear previous session data for a clean start (if not demo and not editing)
+    if (!isDemo && !isEditing) {
       localStorage.removeItem("medrecon_home_list")
       localStorage.removeItem("medrecon_discharge_list")
       localStorage.removeItem("recon_results")
@@ -115,20 +128,22 @@ export function NewSessionForm() {
 
     sessionStorage.setItem("dischargeSession", JSON.stringify(sessionDetail))
 
-    // Save to dashboard list (friend's feature)
-    const newDashboardSession = {
-      id: sessionDetail.id,
-      patientName: sessionDetail.patientName,
-      status: 'in-progress',
-      updatedAt: new Date(),
-      createdAt: new Date(),
-      mrn: sessionDetail.patientId
-    }
+    if (!isEditing) {
+      // Save to dashboard list (friend's feature)
+      const newDashboardSession = {
+        id: sessionDetail.id,
+        patientName: sessionDetail.patientName,
+        status: 'in-progress',
+        updatedAt: new Date(),
+        createdAt: new Date(),
+        mrn: sessionDetail.patientId
+      }
 
-    const saved = localStorage.getItem('medsafe_sessions')
-    const currentSessions = saved ? JSON.parse(saved) : dischargeSessions
-    currentSessions.unshift(newDashboardSession)
-    localStorage.setItem('medsafe_sessions', JSON.stringify(currentSessions))
+      const saved = localStorage.getItem('medsafe_sessions')
+      const currentSessions = saved ? JSON.parse(saved) : dischargeSessions
+      currentSessions.unshift(newDashboardSession)
+      localStorage.setItem('medsafe_sessions', JSON.stringify(currentSessions))
+    }
 
     // Navigate to the next step (Home Medication entry)
     router.push('/home-meds')
@@ -138,7 +153,7 @@ export function NewSessionForm() {
     <div className="min-h-screen bg-background flex flex-col">
       <SessionTopBar 
         patientName={patientName || "New Patient"}
-        sessionId={patientId || "Pending ID"}
+        patientId={patientId || "Pending ID"}
         step={1}
       />
 
@@ -383,7 +398,7 @@ export function NewSessionForm() {
                   </>
                 ) : (
                   <>
-                    Start Session
+                    {isEditing ? "Save & Continue" : "Start Session"}
                     <ArrowRight className="w-4 h-4" aria-hidden="true" />
                   </>
                 )}

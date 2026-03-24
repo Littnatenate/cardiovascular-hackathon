@@ -74,7 +74,7 @@ export function AddMedForm({ defaultSource, onAdd, onCancel }: AddMedFormProps) 
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="strength" className="text-xs font-medium text-muted-foreground">
-            Strength
+            Dose
           </label>
           <Input
             id="strength"
@@ -86,7 +86,7 @@ export function AddMedForm({ defaultSource, onAdd, onCancel }: AddMedFormProps) 
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="dose" className="text-xs font-medium text-muted-foreground">
-            Dose
+            Quantity
           </label>
           <Input
             id="dose"

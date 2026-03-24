@@ -42,7 +42,7 @@ export const STATUS_CONFIG: Record<MedStatus, StatusConfig> = {
     iconBgClass: "bg-blue-100",
   },
   continued: {
-    label: "CONTINUED",
+    label: "VERIFIED",
     icon: "✅",
     bgClass: "bg-[color:var(--status-continued-bg)]",
     borderClass: "border-[color:var(--status-continued-border)]",

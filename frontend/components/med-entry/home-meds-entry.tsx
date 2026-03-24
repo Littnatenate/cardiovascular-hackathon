@@ -44,7 +44,7 @@ export function HomeMedsEntry() {
       if (parsed.id) activeId = parsed.id;
       setPatientData({
         name: parsed.patientName || PATIENT_NAME,
-        id: activeId
+        id: parsed.patientId || activeId
       });
     }
 
@@ -111,7 +111,7 @@ export function HomeMedsEntry() {
     <div className="min-h-screen bg-background font-sans flex flex-col">
       <SessionTopBar 
         patientName={patientData.name} 
-        sessionId={patientData.id} 
+        patientId={patientData.id} 
         step={2} 
       />
 
@@ -176,15 +176,18 @@ export function HomeMedsEntry() {
           {/* Table header — desktop only */}
           {meds.length > 0 && (
             <div
-              className="mb-1.5 hidden sm:grid px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-              style={{ gridTemplateColumns: "1fr 1px 6rem 1px 12rem" }}
+              className="mb-1.5 hidden sm:grid w-full px-4 border border-transparent text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+              style={{ gridTemplateColumns: "minmax(0, 1fr) 1px 6rem 1px 6rem 1px 12rem 80px" }}
               aria-hidden="true"
             >
-              <span>Drug / Strength</span>
-              <span />
-              <span>Dose</span>
-              <span />
-              <span>Frequency</span>
+              <div className="pr-4">Drug</div>
+              <div />
+              <div className="px-2">Dose</div>
+              <div />
+              <div className="px-2">Quantity</div>
+              <div />
+              <div className="px-2">Frequency</div>
+              <div />
             </div>
           )}
 

@@ -30,7 +30,7 @@ export default function PatientInstructions() {
         if (savedSession) {
           const data = JSON.parse(savedSession)
           setPatientName(data.patientName || "Margaret Thompson")
-          setPatientId(data.id || "MRN-002847")
+          setPatientId(data.patientId || data.id || "S1234567A")
         }
 
         const rawResults = localStorage.getItem('recon_results')
@@ -102,7 +102,7 @@ export default function PatientInstructions() {
     <SessionLayout>
       <SessionTopBar 
         patientName={patientName} 
-        sessionId={patientId} 
+        patientId={patientId} 
         step={6} 
       />
       {/* Main Content */}

@@ -51,21 +51,21 @@ export function MedRow({ med, onUpdate, onDelete }: MedRowProps) {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-muted-foreground">Strength</label>
+            <label className="text-xs font-medium text-muted-foreground">Dose</label>
             <Input
               value={draft.strength}
               onChange={(e) => setDraft({ ...draft, strength: e.target.value })}
               className="h-8 text-sm"
-              aria-label="Strength"
+              aria-label="Dose"
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-muted-foreground">Dose</label>
+            <label className="text-xs font-medium text-muted-foreground">Quantity</label>
             <Input
               value={draft.dose}
               onChange={(e) => setDraft({ ...draft, dose: e.target.value })}
               className="h-8 text-sm"
-              aria-label="Dose"
+              aria-label="Quantity"
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -93,32 +93,27 @@ export function MedRow({ med, onUpdate, onDelete }: MedRowProps) {
   }
 
   return (
-    <div className="group flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:bg-accent/30">
-      <div className="flex flex-1 flex-col gap-1 min-w-0 sm:flex-row sm:items-center sm:gap-4">
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-foreground truncate">{med.drugName}</p>
-          <p className="text-sm text-muted-foreground">{med.strength}</p>
-        </div>
-        <div className="hidden sm:block w-px h-8 bg-border" aria-hidden="true" />
-        <div className="text-sm text-foreground sm:w-24">
-          <span className="font-medium">{med.dose}</span>
-        </div>
-        <div className="hidden sm:block w-px h-8 bg-border" aria-hidden="true" />
-        <div className="text-sm text-foreground sm:w-24">
-          <span className="font-medium">{med.dose}</span>
-        </div>
-        <div className="hidden sm:block w-px h-8 bg-border" aria-hidden="true" />
-        <div className="text-sm text-muted-foreground sm:w-40 flex-1 leading-relaxed">
-          {med.frequency}
-        </div>
+    <div 
+      className="group grid w-full items-center rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:bg-accent/30"
+      style={{ gridTemplateColumns: "minmax(0, 1fr) 1px 6rem 1px 6rem 1px 12rem 80px" }}
+    >
+      <div className="min-w-0 pr-4">
+        <p className="font-semibold text-foreground truncate">{med.drugName}</p>
+      </div>
+      <div className="hidden sm:block w-px h-8 bg-border" aria-hidden="true" />
+      <div className="text-sm text-foreground px-2">
+        <span className="font-medium">{med.strength}</span>
+      </div>
+      <div className="hidden sm:block w-px h-8 bg-border" aria-hidden="true" />
+      <div className="text-sm text-foreground px-2">
+        <span className="font-medium">{med.dose}</span>
+      </div>
+      <div className="hidden sm:block w-px h-8 bg-border" aria-hidden="true" />
+      <div className="text-sm text-muted-foreground leading-relaxed truncate px-2">
+        {med.frequency}
       </div>
 
-      {/* Mobile view supplementary line */}
-      <div className="flex sm:hidden items-center gap-2 mt-0.5">
-        <span className="text-xs text-muted-foreground">{med.frequency}</span>
-      </div>
-
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
         <Button
           size="icon"
           variant="ghost"
