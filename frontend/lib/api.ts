@@ -28,11 +28,9 @@ export async function reconcileMedications(homeMeds: any[], dischargeMeds: any[]
     }
 
     const data = await response.json();
-    // Some versions of the backend return data.results, others return data directly
     return data.results || data; 
   } catch (error) {
     console.error("[API] Network/Connection error:", error);
-    console.log("[API] Using mock fallback for demonstration.");
     return getMockReconciliation();
   }
 }
@@ -122,32 +120,31 @@ export async function exportPdf(instructionsMd: string, patientName: string = "P
       throw new Error(`API error: ${response.statusText}`);
     }
 
-    // Return the raw Blob to trigger download
     return await response.blob();
   } catch (error) {
     console.error("Error exporting PDF:", error);
     throw error;
   }
 }
+
 function getMockReconciliation() {
-  // A realistic mock for demo purposes if backend is down
   return {
     "atorvastatin-40": {
       status: "changed",
-      reason: "Dose increased for intensive lipid management following acute cardiac event.",
+      reason: "Dose increased for intensive lipid management.",
       recommendation: "Increase Atorvastatin to 40mg once nightly.",
       discrepancy: false,
       severity: "low"
     },
     "metformin-500": {
       status: "continued",
-      reason: "HbA1c remains within target; no contraindications present.",
-      discrepation: false
+      reason: "HbA1c remains within target.",
+      discrepancy: false
     },
     "lisinopril-10": {
       status: "discrepancy",
-      reason: "Lisinopril accidentally omitted from discharge script despite stable BP.",
-      recommendation: "Escalate to physician to confirm re-initiation.",
+      reason: "Omitted from discharge script.",
+      recommendation: "Confirm re-initiation.",
       discrepancy: true,
       severity: "high"
     }

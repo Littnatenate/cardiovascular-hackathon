@@ -10,7 +10,7 @@ app = FastAPI(title="MedSafe API", docs_url=None, redoc_url=None)  # Disable pub
 app.add_middleware(SecurityMiddleware)
 
 # ── CORS — Only allow trusted frontend origins ──
-ALLOWED_ORIGINS = os.getenv("MEDSAFE_CORS_ORIGINS", "http://localhost:3000").split(",")
+ALLOWED_ORIGINS = os.getenv("MEDSAFE_CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
