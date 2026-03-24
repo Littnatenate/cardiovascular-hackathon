@@ -14,20 +14,17 @@ interface MedCardProps {
   onDetails: (id: string) => void;
 }
 
-export function MedCard({ result, onConfirm, onOverride, onDetails }: MedCardProps) {
+export function MedCard({ result, onConfirm, onOverride }: Omit<MedCardProps, 'onDetails'>) {
   const [expanded, setExpanded] = useState(result.status !== "continued");
   const cfg = STATUS_CONFIG[result.status];
 
-  const isContinued = result.status === "continued";
+  const isContinued = result.status === "continued" || result.confirmed || result.autoConfirmed;
 
   return (
     <div
       className={cn(
-        "rounded-xl border-l-4 border border-border overflow-hidden transition-all",
-        cfg.bgClass,
-        cfg.borderClass
+        "rounded-xl border border-border bg-card overflow-hidden transition-all shadow-sm",
       )}
-      style={{ borderLeftColor: `var(--status-${result.status === "new" ? "new" : result.status === "changed" ? "changed" : result.status === "stopped" ? "stopped" : "continued"}-badge)` }}
     >
       {/* Card Header — always visible */}
       <button
@@ -36,49 +33,30 @@ export function MedCard({ result, onConfirm, onOverride, onDetails }: MedCardPro
         aria-expanded={expanded}
         aria-label={`${result.drugName} — ${cfg.label}. Click to ${expanded ? "collapse" : "expand"}`}
       >
-        {/* Status icon */}
-        <span
-          className={cn(
-            "flex items-center justify-center w-9 h-9 rounded-lg text-lg shrink-0 mt-0.5",
-            cfg.iconBgClass
-          )}
-          aria-hidden
-        >
-          {cfg.icon}
-        </span>
-
+        {/* Card Header Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={cn("text-base font-bold leading-tight", cfg.textClass)}>
+          <div className="flex items-center gap-2">
+            {/* Subtle inline icon */}
+            <span className={cn("shrink-0", cfg.textClass)} aria-hidden>
+              {cfg.icon}
+            </span>
+
+            <span className="text-base font-bold text-foreground truncate">
               {result.drugName}
             </span>
-            <span
-              className={cn(
-                "text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full",
-                cfg.badgeClass
-              )}
-            >
-              {cfg.label}
-            </span>
-            {result.autoConfirmed && (
-              <span className="text-xs font-semibold text-[color:var(--status-continued-badge)] bg-[color:var(--status-continued-bg)] border border-[color:var(--status-continued-border)] px-2 py-0.5 rounded-full">
-                Auto-confirmed
-              </span>
-            )}
-            {result.confirmed && !result.autoConfirmed && (
+            
+            {isContinued && (
               <span className="text-xs font-semibold text-[color:var(--status-continued-badge)] bg-[color:var(--status-continued-bg)] border border-[color:var(--status-continued-border)] px-2 py-0.5 rounded-full flex items-center gap-1">
-                <Check className="w-3 h-3" /> Confirmed
+                {result.autoConfirmed ? "Auto-confirmed" : <><Check className="w-3 h-3" /> Confirmed</>}
               </span>
             )}
           </div>
-
+          
           {/* Original name diff */}
           {result.originalNames && (
-            <p className="text-xs text-muted-foreground mt-1">
-              Home:{" "}
-              <span className="font-medium">{result.originalNames.home}</span>
-              {" → "}Discharge:{" "}
-              <span className="font-medium">{result.originalNames.discharge}</span>
+            <p className="text-xs text-muted-foreground mt-1.5 ml-6">
+              Home: <span className="font-medium">{result.originalNames.home}</span>
+              {" → "}Discharge: <span className="font-medium">{result.originalNames.discharge}</span>
             </p>
           )}
         </div>
@@ -132,45 +110,28 @@ export function MedCard({ result, onConfirm, onOverride, onDetails }: MedCardPro
             </div>
           )}
 
-          {/* Action buttons — hide for auto-confirmed */}
-          {!result.autoConfirmed && (
-            <div className="flex flex-wrap gap-2 pt-1">
+          {/* Action buttons — hide for confirmed */}
+          {!isContinued && (
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t mt-3">
               <Button
                 size="sm"
-                variant="outline"
-                className={cn(
-                  "gap-1.5 font-semibold border-2",
-                  result.confirmed
-                    ? "border-[color:var(--status-continued-badge)] text-[color:var(--status-continued-text)] bg-[color:var(--status-continued-bg)]"
-                    : "border-[color:var(--status-continued-badge)] text-[color:var(--status-continued-text)] hover:bg-[color:var(--status-continued-bg)]"
-                )}
+                className="gap-1.5 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
                 onClick={() => onConfirm(result.id)}
                 aria-label={`Confirm ${result.drugName}`}
               >
                 <Check className="w-3.5 h-3.5" />
-                Confirm {cfg.label === "CONTINUED" ? "" : cfg.label.toLowerCase().replace("dose ", "")}
-              </Button>
-
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5 border-2 border-destructive/50 text-destructive hover:bg-destructive/10"
-                onClick={() => onOverride(result.id)}
-                aria-label={`Delete ${result.drugName}`}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Delete
+                Mark as Verified
               </Button>
 
               <Button
                 size="sm"
                 variant="ghost"
-                className="gap-1.5 text-primary hover:text-primary"
-                onClick={() => onDetails(result.id)}
-                aria-label={`View details for ${result.drugName}`}
+                className="gap-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                onClick={() => onOverride(result.id)}
+                aria-label={`Delete ${result.drugName}`}
               >
-                <Info className="w-3.5 h-3.5" />
-                Details
+                <Trash2 className="w-3.5 h-3.5" />
+                Dismiss
               </Button>
             </div>
           )}

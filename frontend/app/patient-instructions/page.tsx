@@ -7,7 +7,8 @@ import {
   ChevronRight, 
   AlertCircle,
   Stethoscope,
-  Check
+  Check,
+  MessageCircle
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { SessionLayout } from "@/components/session-layout"
@@ -137,7 +138,14 @@ export default function PatientInstructions() {
             </p>
             <div className="flex flex-wrap gap-4">
               <Button variant="outline" onClick={handlePrint} className="gap-2">
-                <Printer className="w-4 h-4" /> Print Instructions
+                <Printer className="w-4 h-4" /> Print / Save as PDF
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => window.open(`https://wa.me/?text=Please%20review%20these%20new%20discharge%20instructions:%20https://medrecon-discharge.demo/qr/${patientId}`, '_blank')} 
+                className="gap-2 bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:text-green-800 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800"
+              >
+                <MessageCircle className="w-4 h-4" /> Send via WhatsApp
               </Button>
               <Button onClick={handleDone} className="gap-2">
                 <Check className="w-4 h-4" /> Done & Finalize

@@ -6,7 +6,7 @@ import { MedResult, SummaryCount, MedStatus } from "./types";
 import { SAMPLE_RESULTS } from "./sample-data";
 import { SummaryBar } from "./summary-bar";
 import { MedCard } from "./med-card";
-import { ChevronLeft, ChevronRight, AlertTriangle, Activity } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlertTriangle, Activity, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { SessionTopBar } from "@/components/session-top-bar";
@@ -20,14 +20,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from "@/components/ui/dialog";
 
 const SORT_ORDER = ["interaction", "stopped", "changed", "uncertain", "new", "continued"];
 
@@ -35,9 +27,9 @@ export function ComparisonResults() {
   const router = useRouter();
   const [results, setResults] = useState<MedResult[]>([]);
   const [patient, setPatient] = useState<any>(null);
-  const [detailsOpen, setDetailsOpen] = useState<string | null>(null);
   const [overrideOpen, setOverrideOpen] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [allergyAlerts, setAllergyAlerts] = useState<any[]>([]);
 
   useEffect(() => {
     const rawResults = localStorage.getItem('recon_results');
@@ -45,6 +37,9 @@ export function ComparisonResults() {
     if (rawResults) {
       const data = JSON.parse(rawResults);
       setPatient(rawPatient ? JSON.parse(rawPatient) : null);
+      if (data.allergy_alerts) {
+        setAllergyAlerts(data.allergy_alerts);
+      }
       
       const mapped: MedResult[] = [];
       
@@ -153,21 +148,12 @@ export function ComparisonResults() {
     setOverrideOpen(id);
   }
 
-  function handleDetails(id: string) {
-    setDetailsOpen(id);
-  }
-
   function confirmOverride() {
     if (!overrideOpen) return;
     setResults((prev) => prev.filter((r) => r.id !== overrideOpen));
     setOverrideOpen(null);
   }
 
-  const selectedDetails = useMemo(
-    () => results.find((r) => r.id === detailsOpen),
-    [results, detailsOpen]
-  );
-  
   const selectedOverride = useMemo(
     () => results.find((r) => r.id === overrideOpen),
     [results, overrideOpen]
@@ -190,38 +176,93 @@ export function ComparisonResults() {
             </span>
           </div>
         )}
-        {/* Allergy alert (demo) */}
-        <div
-          role="alert"
-          className="flex items-start gap-2 rounded-xl bg-[color:var(--status-stopped-bg)] border border-[color:var(--status-stopped-border)] px-4 py-3"
-        >
-          <AlertTriangle
-            className="w-4 h-4 text-[color:var(--status-stopped-badge)] mt-0.5 shrink-0"
-            aria-hidden
-          />
-          <p className="text-sm text-[color:var(--status-stopped-text)] font-medium">
-            <span className="font-bold">Allergy on file:</span> Penicillin — no medications in this list are flagged.
-          </p>
-        </div>
+        {/* Dynamic Allergy alerts */}
+        {allergyAlerts.length > 0 ? (
+          allergyAlerts.map((alert, idx) => (
+            <div
+              key={`allergy-${idx}`}
+              role="alert"
+              className="flex items-start gap-2 rounded-xl bg-[color:var(--status-stopped-bg)] border border-[color:var(--status-stopped-border)] px-4 py-3"
+            >
+              <AlertTriangle
+                className="w-4 h-4 text-[color:var(--status-stopped-badge)] mt-0.5 shrink-0"
+                aria-hidden
+              />
+              <p className="text-sm text-[color:var(--status-stopped-text)] font-medium">
+                <span className="font-bold">CRITICAL ALLERGY ALERT:</span> {alert.reason} (Found in prescription for {alert.medication})
+              </p>
+            </div>
+          ))
+        ) : (
+          patient?.allergies?.length > 0 ? (
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-xl bg-[color:var(--status-new-bg)] border border-[color:var(--status-new-border)] px-4 py-3"
+            >
+              <Check
+                className="w-4 h-4 text-[color:var(--status-new-badge)] mt-0.5 shrink-0"
+                aria-hidden
+              />
+              <p className="text-sm text-[color:var(--status-new-text)] font-medium">
+                <span className="font-bold">Allergy Check Passed:</span> No documented allergies ({patient.allergies.join(", ")}) were found in the discharge list.
+              </p>
+            </div>
+          ) : null
+        )}
 
         {/* Summary bar */}
         <SummaryBar counts={counts} />
 
-        {/* Results list */}
+        {/* Grouped Pending Results list */}
         <section aria-label="Medication results">
           <h2 className="sr-only">Medication comparison results</h2>
-          <div className="space-y-3">
-            {sortedResults.map((result) => (
-              <MedCard
-                key={result.id}
-                result={result}
-                onConfirm={handleConfirm}
-                onOverride={handleOverride}
-                onDetails={handleDetails}
-              />
-            ))}
+          <div className="space-y-6">
+            {SORT_ORDER.map((status) => {
+              // Get pending items for this status block
+              const groupItems = results.filter((r) => r.status === status && !r.confirmed && !r.autoConfirmed && r.status !== "continued");
+              if (groupItems.length === 0) return null;
+
+              return (
+                <div key={status} className="space-y-3">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground border-b pb-1">
+                    {status === "interaction" && "⚠️ Drug Interactions"}
+                    {status === "stopped" && "🛑 Stopped Medications"}
+                    {status === "changed" && "🔄 Dosage Changes"}
+                    {status === "uncertain" && "❓ Uncertain Records"}
+                    {status === "new" && "➕ New Prescriptions"}
+                  </h3>
+                  {groupItems.map((result) => (
+                    <MedCard
+                      key={result.id}
+                      result={result}
+                      onConfirm={handleConfirm}
+                      onOverride={handleOverride}
+                    />
+                  ))}
+                </div>
+              );
+            })}
           </div>
         </section>
+
+        {/* Verified / Confirmed Pile */}
+        {results.some(r => r.confirmed || r.autoConfirmed || r.status === "continued") && (
+          <section className="mt-8 border-t pt-6" aria-label="Verified medications">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-green-600 mb-3 flex items-center gap-2">
+              <Check className="w-4 h-4" /> Verified Medications
+            </h3>
+            <div className="space-y-3 opacity-80">
+              {results.filter(r => r.confirmed || r.autoConfirmed || r.status === "continued").map((result) => (
+                <MedCard
+                  key={result.id}
+                  result={result}
+                  onConfirm={handleConfirm}
+                  onOverride={handleOverride}
+                />
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Pharmacist escalation banner */}
         {hasEscalation && (
@@ -270,71 +311,23 @@ export function ComparisonResults() {
         </Button>
       </nav>
 
-      {/* Override / Delete Modal */}
       <AlertDialog open={!!overrideOpen} onOpenChange={(val) => !val && setOverrideOpen(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete AI Recommendation?</AlertDialogTitle>
+            <AlertDialogTitle>Dismiss AI Recommendation?</AlertDialogTitle>
             <AlertDialogDescription>
-              You are about to delete the AI's flag for <strong>{selectedOverride?.drugName}</strong>. 
+              You are about to discard the AI's flag for <strong>{selectedOverride?.drugName}</strong>. 
               This will remove the item from this list entirely. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmOverride} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete Result
+              Dismiss Result
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Details Modal */}
-      <Dialog open={!!detailsOpen} onOpenChange={(val) => !val && setDetailsOpen(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>AI Reasoning Details</DialogTitle>
-            <DialogDescription>
-              Detailed breakdown for {selectedDetails?.drugName}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedDetails && (
-            <div className="space-y-4 py-3">
-              <div className="rounded-md bg-muted p-3">
-                <p className="text-sm font-medium mb-1.5 text-foreground">Summary</p>
-                <p className="text-sm text-foreground/80 leading-relaxed">{selectedDetails.summary}</p>
-              </div>
-
-              {selectedDetails.originalNames && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-md border p-3">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Home Records</p>
-                    <p className="text-sm font-medium">{selectedDetails.originalNames.home}</p>
-                  </div>
-                  <div className="rounded-md border p-3">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Discharge Rx</p>
-                    <p className="text-sm font-medium">{selectedDetails.originalNames.discharge}</p>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between rounded-md border p-3">
-                <span className="text-sm font-medium text-foreground">AI Confidence</span>
-                <span className="text-sm font-bold capitalize text-primary">
-                  {selectedDetails.confidence}
-                </span>
-              </div>
-            </div>
-          )}
-          <div className="flex justify-end border-t pt-4">
-            <DialogClose asChild>
-              <Button type="button" variant="secondary">
-                Close
-              </Button>
-            </DialogClose>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

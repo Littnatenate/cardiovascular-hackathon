@@ -60,8 +60,8 @@ export async function scanMedication(imageName: string) {
 export async function generateEducation(results: any, patient: any) {
   console.log("[API] Calling generateEducation with results length:", Object.keys(results).length);
   try {
-    // Try both endpoints if needed, but the current restored version expects /educate
-    const response = await fetch(`${API_BASE_URL}/educate`, {
+    // Try both endpoints if needed, but the current restored version expects /generate-education
+    const response = await fetch(`${API_BASE_URL}/generate-education`, {
       method: "POST",
       headers: secureHeaders(),
       body: JSON.stringify({

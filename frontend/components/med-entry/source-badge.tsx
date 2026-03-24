@@ -23,11 +23,6 @@ const sourceConfig: Record<
     icon: <ClipboardList className="w-3 h-3" />,
     className: "bg-[--source-admission] text-[--source-admission-text]",
   },
-  voice: {
-    label: "Voice",
-    icon: null,
-    className: "bg-muted text-muted-foreground",
-  },
 };
 
 export function SourceBadge({ source }: { source: MedSource }) {
