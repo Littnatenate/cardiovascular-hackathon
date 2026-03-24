@@ -10,6 +10,7 @@ export const dischargeSessions: DischargeSession[] = [
   {
     id: '1',
     patientName: 'Tan Ah Kow',
+    mrn: 'S1234567A',
     ward: 'Ward 43',
     bed: 'Bed 12A',
     status: 'in-progress',
@@ -20,6 +21,7 @@ export const dischargeSessions: DischargeSession[] = [
   {
     id: '2',
     patientName: 'Siti Aminah',
+    mrn: 'S7654321B',
     ward: 'Ward 21',
     bed: 'Bed 8B',
     status: 'completed',
@@ -30,6 +32,7 @@ export const dischargeSessions: DischargeSession[] = [
   {
     id: '3',
     patientName: 'Rajesh Kumar',
+    mrn: 'S1122334C',
     ward: 'Ward 43',
     bed: 'Bed 3C',
     status: 'escalated',
@@ -41,6 +44,7 @@ export const dischargeSessions: DischargeSession[] = [
   {
     id: '4',
     patientName: 'Lim Wei Ming',
+    mrn: 'S5566778D',
     ward: 'Ward 12',
     bed: 'Bed 5A',
     status: 'draft',
@@ -51,6 +55,7 @@ export const dischargeSessions: DischargeSession[] = [
   {
     id: '5',
     patientName: 'Maria Santos',
+    mrn: 'G9988776E',
     ward: 'Ward 21',
     bed: 'Bed 2A',
     status: 'in-progress',
@@ -61,6 +66,7 @@ export const dischargeSessions: DischargeSession[] = [
   {
     id: '6',
     patientName: 'Ahmad bin Hassan',
+    mrn: 'S1357924F',
     ward: 'Ward 12',
     bed: 'Bed 9B',
     status: 'completed',
@@ -71,6 +77,7 @@ export const dischargeSessions: DischargeSession[] = [
   {
     id: '7',
     patientName: 'Wong Mei Ling',
+    mrn: 'S2468135G',
     ward: 'Ward 43',
     bed: 'Bed 7A',
     status: 'draft',

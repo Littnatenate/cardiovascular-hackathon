@@ -95,6 +95,9 @@ export function SessionCard({
                 <h3 className="truncate text-base font-semibold text-foreground">
                   {session.patientName}
                 </h3>
+                <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-mono">
+                  {session.mrn}
+                </span>
                 {session.status === 'escalated' && (
                   <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
                 )}

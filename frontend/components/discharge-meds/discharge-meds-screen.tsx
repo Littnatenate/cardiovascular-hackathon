@@ -34,7 +34,7 @@ export function DischargeMedsScreen() {
       if (parsed.id) activeId = parsed.id;
       setPatientData({
         name: parsed.patientName || "Sarah Johnson",
-        id: parsed.patientId || activeId
+        id: parsed.mrn || activeId
       });
     }
 

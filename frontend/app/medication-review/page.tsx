@@ -47,7 +47,7 @@ export default function PreAnalysisReview() {
       setPatient({
         name: data.patientName || "Margaret Thompson",
         dob: "04/12/1951",
-        mrn: data.patientId || data.id || "S1234567A",
+        mrn: data.mrn || "S1234567A",
         allergies: (data.allergies && data.allergies.length > 0) ? data.allergies : ["None Known"],
         dischargeDate: data.dischargeDate || "Mar 19, 2026",
       })
@@ -101,8 +101,15 @@ export default function PreAnalysisReview() {
         return // Abort redirect if cancelled
       }
       
-      localStorage.setItem('recon_results', JSON.stringify(results))
-      localStorage.setItem('recon_patient', JSON.stringify(patient))
+      const sessionData = sessionStorage.getItem("dischargeSession")
+      let activeId = "MRC-2024-0047";
+      if (sessionData) {
+        const parsed = JSON.parse(sessionData)
+        if (parsed.id) activeId = parsed.id;
+      }
+
+      localStorage.setItem(`medrecon_results_${activeId}`, JSON.stringify(results))
+      localStorage.setItem(`medrecon_patient_${activeId}`, JSON.stringify(patient))
       
       setScreen("done")
       setTimeout(() => {

@@ -26,15 +26,17 @@ export default function PatientInstructions() {
   useEffect(() => {
     async function loadData() {
       try {
-        const savedSession = sessionStorage.getItem('dischargeSession')
-        if (savedSession) {
-          const data = JSON.parse(savedSession)
-          setPatientName(data.patientName || "Margaret Thompson")
-          setPatientId(data.patientId || data.id || "S1234567A")
+        const sessionStr = sessionStorage.getItem('dischargeSession');
+        let activeId = "MRC-2024-0047";
+        if (sessionStr) {
+          const parsed = JSON.parse(sessionStr);
+          if (parsed.id) activeId = parsed.id;
+          setPatientName(parsed.patientName || "Margaret Thompson")
+          setPatientId(parsed.mrn || "MRN-002847")
         }
 
-        const rawResults = localStorage.getItem('recon_results')
-        const rawPatient = localStorage.getItem('recon_patient')
+        const rawResults = localStorage.getItem(`medrecon_results_${activeId}`)
+        const rawPatient = localStorage.getItem(`medrecon_patient_${activeId}`)
         
         const results = rawResults ? JSON.parse(rawResults) : {}
         const patient = rawPatient ? JSON.parse(rawPatient) : {}

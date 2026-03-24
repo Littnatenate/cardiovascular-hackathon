@@ -52,7 +52,7 @@ export function NewSessionForm() {
       try {
         const data = JSON.parse(raw)
         if (data.patientName) setPatientName(data.patientName)
-        if (data.patientId && data.patientId !== 'N/A') setPatientId(data.patientId)
+        if (data.mrn && data.mrn !== 'N/A') setPatientId(data.mrn)
         if (data.ward) setWard(data.ward)
         if (data.bedNumber) setBedNumber(data.bedNumber)
         if (data.allergies && Array.isArray(data.allergies)) {
@@ -111,7 +111,7 @@ export function NewSessionForm() {
     const sessionDetail = {
       id: existingSessionId,
       patientName: patientName.trim(),
-      patientId: patientId.trim(),
+      mrn: patientId.trim(),
       ward,
       bedNumber,
       allergies: noneKnown ? [] : allergies.split(",").map((a) => a.trim()).filter(Boolean),
@@ -122,8 +122,9 @@ export function NewSessionForm() {
     // Clear previous session data for a clean start (if not demo and not editing)
     if (!isDemo && !isEditing) {
       localStorage.removeItem("medrecon_home_list")
-      localStorage.removeItem("medrecon_discharge_list")
-      localStorage.removeItem("recon_results")
+    // We no longer use these static keys
+    // localStorage.removeItem(\"medrecon_discharge_list\")
+    // localStorage.removeItem(\"recon_results\")
     }
 
     sessionStorage.setItem("dischargeSession", JSON.stringify(sessionDetail))
@@ -136,13 +137,25 @@ export function NewSessionForm() {
         status: 'in-progress',
         updatedAt: new Date(),
         createdAt: new Date(),
-        mrn: sessionDetail.patientId
+        mrn: sessionDetail.mrn
       }
 
       const saved = localStorage.getItem('medsafe_sessions')
       const currentSessions = saved ? JSON.parse(saved) : dischargeSessions
       currentSessions.unshift(newDashboardSession)
       localStorage.setItem('medsafe_sessions', JSON.stringify(currentSessions))
+    } else {
+      // Update existing session in dashboard list
+      const saved = localStorage.getItem('medsafe_sessions')
+      if (saved) {
+        const currentSessions = JSON.parse(saved)
+        const updatedSessions = currentSessions.map((s: any) => 
+          s.id === sessionDetail.id 
+            ? { ...s, patientName: sessionDetail.patientName, mrn: sessionDetail.mrn, updatedAt: new Date() }
+            : s
+        )
+        localStorage.setItem('medsafe_sessions', JSON.stringify(updatedSessions))
+      }
     }
 
     // Navigate to the next step (Home Medication entry)

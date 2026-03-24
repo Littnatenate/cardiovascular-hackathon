@@ -86,7 +86,7 @@ export default function DashboardPage() {
     sessionStorage.setItem('dischargeSession', JSON.stringify({
       id: session.id,
       patientName: session.patientName,
-      patientId: (session as any).mrn || "N/A",
+      mrn: session.mrn || "N/A",
       ward: session.ward,
       bedNumber: session.bed,
     }));

@@ -13,6 +13,7 @@ export interface Medication {
 export interface DischargeSession {
   id: string
   patientName: string
+  mrn: string
   ward: string
   bed: string
   status: SessionStatus

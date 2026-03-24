@@ -44,7 +44,7 @@ export function HomeMedsEntry() {
       if (parsed.id) activeId = parsed.id;
       setPatientData({
         name: parsed.patientName || PATIENT_NAME,
-        id: parsed.patientId || activeId
+        id: parsed.mrn || activeId
       });
     }
 
