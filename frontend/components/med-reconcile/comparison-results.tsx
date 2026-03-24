@@ -9,7 +9,25 @@ import { MedCard } from "./med-card";
 import { ChevronLeft, ChevronRight, AlertTriangle, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { SessionTopBar } from "@/components/session-top-bar"
+import { SessionTopBar } from "@/components/session-top-bar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 const SORT_ORDER = ["interaction", "stopped", "changed", "uncertain", "new", "continued"];
 
@@ -132,12 +150,28 @@ export function ComparisonResults() {
   }
 
   function handleOverride(id: string) {
-    setOverrideOpen(id === overrideOpen ? null : id);
+    setOverrideOpen(id);
   }
 
   function handleDetails(id: string) {
-    setDetailsOpen(id === detailsOpen ? null : id);
+    setDetailsOpen(id);
   }
+
+  function confirmOverride() {
+    if (!overrideOpen) return;
+    setResults((prev) => prev.filter((r) => r.id !== overrideOpen));
+    setOverrideOpen(null);
+  }
+
+  const selectedDetails = useMemo(
+    () => results.find((r) => r.id === detailsOpen),
+    [results, detailsOpen]
+  );
+  
+  const selectedOverride = useMemo(
+    () => results.find((r) => r.id === overrideOpen),
+    [results, overrideOpen]
+  );
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -235,6 +269,72 @@ export function ComparisonResults() {
           <ChevronRight className="w-4 h-4" />
         </Button>
       </nav>
+
+      {/* Override / Delete Modal */}
+      <AlertDialog open={!!overrideOpen} onOpenChange={(val) => !val && setOverrideOpen(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete AI Recommendation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to delete the AI's flag for <strong>{selectedOverride?.drugName}</strong>. 
+              This will remove the item from this list entirely. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmOverride} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete Result
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Details Modal */}
+      <Dialog open={!!detailsOpen} onOpenChange={(val) => !val && setDetailsOpen(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>AI Reasoning Details</DialogTitle>
+            <DialogDescription>
+              Detailed breakdown for {selectedDetails?.drugName}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedDetails && (
+            <div className="space-y-4 py-3">
+              <div className="rounded-md bg-muted p-3">
+                <p className="text-sm font-medium mb-1.5 text-foreground">Summary</p>
+                <p className="text-sm text-foreground/80 leading-relaxed">{selectedDetails.summary}</p>
+              </div>
+
+              {selectedDetails.originalNames && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-md border p-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Home Records</p>
+                    <p className="text-sm font-medium">{selectedDetails.originalNames.home}</p>
+                  </div>
+                  <div className="rounded-md border p-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Discharge Rx</p>
+                    <p className="text-sm font-medium">{selectedDetails.originalNames.discharge}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between rounded-md border p-3">
+                <span className="text-sm font-medium text-foreground">AI Confidence</span>
+                <span className="text-sm font-bold capitalize text-primary">
+                  {selectedDetails.confidence}
+                </span>
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end border-t pt-4">
+            <DialogClose asChild>
+              <Button type="button" variant="secondary">
+                Close
+              </Button>
+            </DialogClose>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

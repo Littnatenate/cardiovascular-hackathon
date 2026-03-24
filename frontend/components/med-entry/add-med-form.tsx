@@ -30,12 +30,21 @@ export function AddMedForm({ defaultSource, onAdd, onCancel }: AddMedFormProps) 
   const [form, setForm] = useState(emptyForm);
   const [source] = useState<MedSource>(defaultSource);
 
+  function formatDose(val: string) {
+    const trimmed = val.trim();
+    if (/^\d+(\.\d+)?$/.test(trimmed)) {
+      return Number(trimmed) === 1 ? `${trimmed} tab` : `${trimmed} tabs`;
+    }
+    return val;
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.drugName.trim()) return;
     onAdd({
       id: crypto.randomUUID(),
       ...form,
+      dose: formatDose(form.dose),
       source,
     });
     setForm(emptyForm);
@@ -100,10 +109,7 @@ export function AddMedForm({ defaultSource, onAdd, onCancel }: AddMedFormProps) 
           />
         </div>
       </div>
-      <div className="mt-4 flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          Source: <span className="font-medium capitalize">{source}</span>
-        </p>
+      <div className="mt-4 flex items-center justify-end">
         <div className="flex gap-2">
           <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
             Cancel

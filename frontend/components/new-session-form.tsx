@@ -305,12 +305,14 @@ export function NewSessionForm() {
                       ? "bg-primary border-primary"
                       : "border-border bg-card"
                   }`}
-                  onClick={() => handleNoneKnown(!noneKnown)}
                   role="checkbox"
                   aria-checked={noneKnown}
                   tabIndex={0}
                   onKeyDown={(e) => {
-                    if (e.key === " " || e.key === "Enter") handleNoneKnown(!noneKnown)
+                    if (e.key === " " || e.key === "Enter") {
+                      e.preventDefault()
+                      handleNoneKnown(!noneKnown)
+                    }
                   }}
                 >
                   {noneKnown && (
@@ -351,7 +353,7 @@ export function NewSessionForm() {
                   type="date"
                   value={dischargeDate}
                   onChange={(e) => setDischargeDate(e.target.value)}
-                  className={fieldClass(false) + " pr-10"}
+                  className={fieldClass(false) + " pr-10 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"}
                 />
                 <CalendarDays
                   className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none"

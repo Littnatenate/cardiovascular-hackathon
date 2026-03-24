@@ -21,6 +21,7 @@ interface FilterBarProps {
   onReset: () => void
   sessionCount: number
   totalCount: number
+  children?: React.ReactNode
 }
 
 export function FilterBar({
@@ -31,6 +32,7 @@ export function FilterBar({
   onReset,
   sessionCount,
   totalCount,
+  children,
 }: FilterBarProps) {
   const hasActiveFilters = statusFilter !== 'all' || sortBy !== 'updated-desc'
 
@@ -95,6 +97,9 @@ export function FilterBar({
             <span className="sr-only">Reset filters</span>
           </Button>
         )}
+
+        {/* Slot for Bulk Actions */}
+        {children}
       </div>
     </div>
   )

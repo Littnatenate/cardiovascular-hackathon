@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Medication } from "./types";
-import { SourceBadge } from "./source-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pencil, Trash2, Check, X } from "lucide-react";
@@ -17,8 +16,19 @@ export function MedRow({ med, onUpdate, onDelete }: MedRowProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(med);
 
+  function formatDose(val: string) {
+    const trimmed = val.trim();
+    if (/^\d+(\.\d+)?$/.test(trimmed)) {
+      return Number(trimmed) === 1 ? `${trimmed} tab` : `${trimmed} tabs`;
+    }
+    return val;
+  }
+
   function handleSave() {
-    onUpdate(draft);
+    onUpdate({
+      ...draft,
+      dose: formatDose(draft.dose),
+    });
     setEditing(false);
   }
 
@@ -94,18 +104,17 @@ export function MedRow({ med, onUpdate, onDelete }: MedRowProps) {
           <span className="font-medium">{med.dose}</span>
         </div>
         <div className="hidden sm:block w-px h-8 bg-border" aria-hidden="true" />
-        <div className="text-sm text-muted-foreground sm:w-40 leading-relaxed">
-          {med.frequency}
+        <div className="text-sm text-foreground sm:w-24">
+          <span className="font-medium">{med.dose}</span>
         </div>
         <div className="hidden sm:block w-px h-8 bg-border" aria-hidden="true" />
-        <div className="sm:w-24">
-          <SourceBadge source={med.source} />
+        <div className="text-sm text-muted-foreground sm:w-40 flex-1 leading-relaxed">
+          {med.frequency}
         </div>
       </div>
 
-      {/* Mobile source line */}
+      {/* Mobile view supplementary line */}
       <div className="flex sm:hidden items-center gap-2 mt-0.5">
-        <SourceBadge source={med.source} />
         <span className="text-xs text-muted-foreground">{med.frequency}</span>
       </div>
 

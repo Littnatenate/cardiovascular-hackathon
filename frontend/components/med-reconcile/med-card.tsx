@@ -4,7 +4,7 @@ import { useState } from "react";
 import { MedResult } from "./types";
 import { STATUS_CONFIG, ConfidenceBadge } from "./status-config";
 import { cn } from "@/lib/utils";
-import { Check, Pencil, Info, ChevronDown, ChevronUp, MessageSquare } from "lucide-react";
+import { Check, Trash2, Info, ChevronDown, ChevronUp, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface MedCardProps {
@@ -154,12 +154,12 @@ export function MedCard({ result, onConfirm, onOverride, onDetails }: MedCardPro
               <Button
                 size="sm"
                 variant="outline"
-                className="gap-1.5 border-2 border-[color:var(--status-changed-badge)] text-[color:var(--status-changed-text)] hover:bg-[color:var(--status-changed-bg)]"
+                className="gap-1.5 border-2 border-destructive/50 text-destructive hover:bg-destructive/10"
                 onClick={() => onOverride(result.id)}
-                aria-label={`Override ${result.drugName}`}
+                aria-label={`Delete ${result.drugName}`}
               >
-                <Pencil className="w-3.5 h-3.5" />
-                Override
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
               </Button>
 
               <Button

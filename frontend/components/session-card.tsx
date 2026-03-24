@@ -10,104 +10,84 @@ import {
   MapPin,
   Clock,
   ChevronRight,
-  Archive,
+  Trash2,
   AlertCircle,
 } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { cn } from '@/lib/utils'
 
 interface SessionCardProps {
   session: DischargeSession
   onTap?: (session: DischargeSession) => void
-  onArchive?: (session: DischargeSession) => void
+  onDelete?: (session: DischargeSession) => void
+  isSelected?: boolean
+  onSelect?: (id: string, checked: boolean) => void
+  isSelectMode?: boolean
 }
 
-export function SessionCard({ session, onTap, onArchive }: SessionCardProps) {
+export function SessionCard({ 
+  session, 
+  onTap, 
+  onDelete,
+  isSelected = false,
+  onSelect,
+  isSelectMode = false
+}: SessionCardProps) {
   const [isMounted, setIsMounted] = useState(false)
-  const [swipeOffset, setSwipeOffset] = useState(0)
-  const [showArchive, setShowArchive] = useState(false)
-  const startX = useRef<number | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setIsMounted(true)
   }, [])
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    startX.current = e.touches[0].clientX
-  }
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (startX.current === null) return
-    const currentX = e.touches[0].clientX
-    const diff = startX.current - currentX
-    if (diff > 0) {
-      setSwipeOffset(Math.min(diff, 100))
-    }
-  }
-
-  const handleTouchEnd = () => {
-    if (swipeOffset > 60) {
-      setShowArchive(true)
-      setSwipeOffset(80)
-    } else {
-      setSwipeOffset(0)
-      setShowArchive(false)
-    }
-    startX.current = null
-  }
-
-  const handleArchiveClick = () => {
-    onArchive?.(session)
-    setSwipeOffset(0)
-    setShowArchive(false)
-  }
-
-  const resetSwipe = () => {
-    setSwipeOffset(0)
-    setShowArchive(false)
+  const handleDeleteClick = () => {
+    onDelete?.(session)
   }
 
   return (
-    <div className="relative overflow-hidden rounded-xl">
-      {/* Archive Action Background */}
-      <div
-        className={cn(
-          'absolute inset-y-0 right-0 flex items-center justify-end bg-destructive/10 transition-opacity',
-          showArchive ? 'opacity-100' : 'opacity-0'
-        )}
-        style={{ width: swipeOffset }}
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          className="mr-2 h-10 w-10 text-destructive hover:bg-destructive/20 hover:text-destructive"
-          onClick={handleArchiveClick}
-        >
-          <Archive className="h-5 w-5" />
-          <span className="sr-only">Archive session</span>
-        </Button>
-      </div>
-
-      {/* Card */}
+    <div className="group relative overflow-hidden rounded-xl">
       <Card
         ref={cardRef}
         className={cn(
           'cursor-pointer border-border bg-card transition-all duration-200 hover:border-primary/30 hover:shadow-md',
-          session.status === 'escalated' && 'border-l-4 border-l-destructive'
+          isSelectMode ? 'pl-12' : 'pl-4',
+          session.status === 'escalated' && 'border-l-4 border-l-destructive',
+          isSelected && 'bg-primary/5 border-primary ring-1 ring-primary/20'
         )}
-        style={{ transform: `translateX(-${swipeOffset}px)` }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
         onClick={() => {
-          if (swipeOffset === 0) {
-            onTap?.(session)
+          if (isSelectMode) {
+            onSelect?.(session.id, !isSelected)
           } else {
-            resetSwipe()
+            onTap?.(session)
           }
         }}
       >
-        <CardContent className="p-4">
+        <CardContent className="p-4 pl-0">
+          {/* Checkbox Overlay */}
+          {isSelectMode && (
+            <div 
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-10 animate-in fade-in zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={(e) => onSelect?.(session.id, e.target.checked)}
+                className="h-5 w-5 rounded border-border text-primary focus:ring-primary cursor-pointer transition-transform hover:scale-110"
+              />
+            </div>
+          )}
+
           <div className="flex items-start justify-between gap-4">
             {/* Patient Info */}
             <div className="min-w-0 flex-1">
@@ -127,8 +107,45 @@ export function SessionCard({ session, onTap, onArchive }: SessionCardProps) {
               </div>
             </div>
 
-            {/* Status Badge */}
-            <StatusBadge status={session.status} />
+            {/* Actions & Status */}
+            <div className="flex flex-col items-end gap-2">
+              <StatusBadge status={session.status} />
+              
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Delete session</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Session?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete {session.patientName}'s session? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={handleDeleteClick}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </div>
           </div>
 
           {/* Timestamps */}
@@ -148,11 +165,6 @@ export function SessionCard({ session, onTap, onArchive }: SessionCardProps) {
               {session.notes}
             </p>
           )}
-
-          {/* Tap indicator */}
-          <div className="absolute bottom-4 right-4 opacity-50">
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </div>
         </CardContent>
       </Card>
     </div>

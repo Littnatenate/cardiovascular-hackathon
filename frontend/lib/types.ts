@@ -1,4 +1,14 @@
 export type SessionStatus = 'in-progress' | 'completed' | 'escalated' | 'draft'
+export type MedSource = "photo" | "manual" | "admission";
+
+export interface Medication {
+  id: string;
+  drugName: string;
+  strength: string;
+  dose: string;
+  frequency: string;
+  source: MedSource;
+}
 
 export interface DischargeSession {
   id: string

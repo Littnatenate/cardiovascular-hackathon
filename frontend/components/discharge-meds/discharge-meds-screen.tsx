@@ -2,208 +2,247 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Pill, FileText, Plus, ArrowLeft, ArrowRight, Trash2 } from "lucide-react"
+import { Pill, Plus, ArrowLeft, ArrowRight } from "lucide-react"
 import { SessionTopBar } from "@/components/session-top-bar"
+import { Medication, MedSource } from "@/components/med-entry/types"
+import { MedRow } from "@/components/med-entry/med-row"
+import { AddMedForm } from "@/components/med-entry/add-med-form"
+import { InputMethodSelector } from "@/components/med-entry/input-method-selector"
+import { Button } from "@/components/ui/button"
+import { SAMPLE_DISCHARGE_MEDS } from "@/lib/mock-data";
+import {
+  Empty,
+  EmptyMedia,
+  EmptyHeader,
+  EmptyTitle,
+  EmptyDescription,
+} from "@/components/ui/empty"
 
-// ── Types ──────────────────────────────────────────────────────
-interface Medication {
-  id: string
-  drugName: string
-  strength: string
-  dose: string
-  frequency: string
-  route?: string
-}
-
-function createId() {
-  return Math.random().toString(36).substring(2, 11)
-}
-
-// ── Component ──────────────────────────────────────────────────
 export function DischargeMedsScreen() {
   const router = useRouter()
   const [meds, setMeds] = useState<Medication[]>([])
+  const [activeMethod, setActiveMethod] = useState<MedSource | null>(null)
+  const [showAddForm, setShowAddForm] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
   const [patientData, setPatientData] = useState({ name: "Sarah Johnson", id: "MRC-2024-0047" })
 
-  // Load patient data from session (friend's feature)
   useEffect(() => {
-    const saved = sessionStorage.getItem("dischargeSession")
-    if (saved) {
-      const data = JSON.parse(saved)
+    let activeId = "MRC-2024-0047";
+    const sessionData = sessionStorage.getItem("dischargeSession");
+    if (sessionData) {
+      const parsed = JSON.parse(sessionData);
+      if (parsed.id) activeId = parsed.id;
       setPatientData({
-        name: data.patientName,
-        id: data.id || "MRC-2024-0047"
-      })
+        name: parsed.patientName || "Sarah Johnson",
+        id: activeId
+      });
     }
-  }, [])
 
-  // Load from localStorage on mount (AI persistence)
-  useEffect(() => {
-    const saved = localStorage.getItem("medrecon_discharge_list")
+    const savedKey = `medrecon_discharge_list_${activeId}`;
+    const saved = localStorage.getItem(savedKey);
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
-        // Sanitize legacy mock data
+        const parsed = JSON.parse(saved)
         const fixedMeds = parsed.map((m: any, idx: number) => ({
           ...m,
           id: m.id || `legacy-discharge-${idx}`,
           drugName: m.drugName || m.name || "Unknown",
           source: m.source || "manual",
-          strength: m.strength || "100mg"
-        }));
-        setMeds(fixedMeds);
+          strength: m.strength || "",
+          dose: m.dose || "",
+          frequency: m.frequency || ""
+        }))
+        setMeds(fixedMeds)
       } catch (e) {
         console.error("Failed to parse saved discharge meds", e)
+      }
+    } else {
+      // Seed data for demo sessions 1-7
+      if (['1', '2', '3', '4', '5', '6', '7'].includes(activeId)) {
+        setMeds(SAMPLE_DISCHARGE_MEDS.map(m => ({ ...m, id: crypto.randomUUID() })));
+      } else {
+        setMeds([])
       }
     }
     setIsInitialized(true)
   }, [])
 
-  // Save to localStorage on change (AI persistence)
   useEffect(() => {
     if (isInitialized) {
-      localStorage.setItem("medrecon_discharge_list", JSON.stringify(meds))
+      const savedKey = `medrecon_discharge_list_${patientData.id}`;
+      localStorage.setItem(savedKey, JSON.stringify(meds));
     }
-  }, [meds, isInitialized])
+  }, [meds, isInitialized, patientData.id])
 
-  const handleUpdate = (id: string, field: keyof Medication, value: string) => {
-    setMeds((prev) => prev.map((m) => (m.id === id ? { ...m, [field]: value } : m)))
+  function handleMethodSelect(method: MedSource) {
+    setActiveMethod(method)
+    if (method === "manual") {
+      setShowAddForm(true)
+    } else if (method === "photo") {
+      router.push('/photo-capture')
+    } else if (method === "admission") {
+      const importedMed: Medication = {
+        id: crypto.randomUUID(),
+        drugName: "Atorvastatin",
+        strength: "40 mg",
+        dose: "1 tablet",
+        frequency: "Once daily",
+        source: "admission",
+      }
+      setMeds((prev) => [...prev, importedMed])
+    }
   }
 
-  const handleDelete = (id: string) => {
+  function handleAdd(med: Medication) {
+    setMeds((prev) => [...prev, med])
+    setShowAddForm(false)
+    setActiveMethod(null)
+  }
+
+  function handleUpdate(updated: Medication) {
+    setMeds((prev) => prev.map((m) => (m.id === updated.id ? updated : m)))
+  }
+
+  function handleDelete(id: string) {
     setMeds((prev) => prev.filter((m) => m.id !== id))
   }
 
-  const handleAddMed = () => {
-    const newMed: Medication = {
-      id: crypto.randomUUID(),
-      drugName: "",
-      strength: "",
-      dose: "",
-      frequency: "",
-      route: "Oral",
-    }
-    setMeds((prev) => [...prev, newMed])
-    setTimeout(() => {
-      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })
-    }, 50)
-  }
-
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen bg-background font-sans flex flex-col">
       <SessionTopBar 
         patientName={patientData.name} 
         sessionId={patientData.id} 
         step={3} 
       />
 
-      <main className="flex-1 px-4 py-4 space-y-4 pb-32 mx-auto max-w-3xl w-full">
-        {/* Title */}
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-lg font-bold text-foreground leading-tight text-balance">
+      <main className="mx-auto max-w-3xl px-4 pb-32 pt-6 w-full">
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-1">
+            <Pill className="w-5 h-5 text-primary" />
+            <h1 className="text-xl font-bold text-foreground text-balance">
               Discharge Medications
             </h1>
-            <p className="text-sm text-muted-foreground leading-relaxed mt-0.5">
-              Enter medications from the doctor&apos;s discharge prescription
-            </p>
           </div>
-          <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Pill className="w-5 h-5 text-primary" />
-          </div>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Enter medications from the doctor's <strong className="text-foreground">discharge prescription</strong>.
+          </p>
         </div>
 
-        {/* Medication list */}
-        <div className="space-y-2">
-          {meds.length === 0 && (
-            <div className="text-center py-10 text-muted-foreground text-sm">
-              <Pill className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p>No medications added yet</p>
+        <section aria-labelledby="input-method-heading" className="mb-6">
+          <h2
+            id="input-method-heading"
+            className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+          >
+            Add medications via
+          </h2>
+          <InputMethodSelector
+            onSelect={handleMethodSelect}
+            activeMethod={activeMethod}
+          />
+        </section>
+
+        {showAddForm && (
+          <div className="mb-5">
+            <AddMedForm
+              defaultSource="manual"
+              onAdd={handleAdd}
+              onCancel={() => {
+                setShowAddForm(false)
+                setActiveMethod(null)
+              }}
+            />
+          </div>
+        )}
+
+        <section aria-labelledby="med-list-heading">
+          <div className="mb-3 flex items-center justify-between">
+            <h2
+              id="med-list-heading"
+              className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+            >
+              Medications entered
+            </h2>
+            <span className="text-xs text-muted-foreground">
+              {meds.length} {meds.length === 1 ? "entry" : "entries"}
+            </span>
+          </div>
+
+          {meds.length > 0 && (
+            <div
+              className="mb-1.5 hidden sm:grid px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+              style={{ gridTemplateColumns: "1fr 1px 6rem 1px 12rem" }}
+              aria-hidden="true"
+            >
+              <span>Drug / Strength</span>
+              <span />
+              <span>Dose</span>
+              <span />
+              <span>Frequency</span>
             </div>
           )}
-          {meds.map((med, index) => (
-            <div
-              key={med.id}
-              className="rounded-xl border border-border bg-card p-3 space-y-2"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-muted-foreground">
-                  Med #{index + 1}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(med.id)}
-                  className="text-muted-foreground hover:text-destructive transition-colors"
-                  aria-label={`Delete medication ${index + 1}`}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="text"
-                  placeholder="Drug name"
-                  value={med.drugName}
-                  onChange={(e) => handleUpdate(med.id, "drugName", e.target.value)}
-                  className="col-span-2 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-                <input
-                  type="text"
-                  placeholder="Strength (e.g. 40mg)"
-                  value={med.strength}
-                  onChange={(e) => handleUpdate(med.id, "strength", e.target.value)}
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-                <input
-                  type="text"
-                  placeholder="Dose (e.g. 1 tablet)"
-                  value={med.dose}
-                  onChange={(e) => handleUpdate(med.id, "dose", e.target.value)}
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-                <input
-                  type="text"
-                  placeholder="Frequency"
-                  value={med.frequency}
-                  onChange={(e) => handleUpdate(med.id, "frequency", e.target.value)}
-                  className="col-span-2 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
-            </div>
-          ))}
-        </div>
 
-        {/* Add medication button */}
-        <button
-          type="button"
-          onClick={handleAddMed}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-border rounded-xl text-sm font-medium text-muted-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add medication
-        </button>
+          <div className="flex flex-col gap-2" role="list" aria-label="Discharge medications list">
+            {meds.length === 0 && !showAddForm && (
+              <Empty>
+                <EmptyMedia variant="icon">
+                  <Pill className="w-6 h-6 text-muted-foreground" />
+                </EmptyMedia>
+                <EmptyHeader>
+                  <EmptyTitle>No medications yet</EmptyTitle>
+                  <EmptyDescription>
+                    Use one of the input methods above to add discharge medications.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )}
+            {meds.map((med) => (
+              <div key={med.id} role="listitem">
+                <MedRow
+                  med={med}
+                  onUpdate={handleUpdate}
+                  onDelete={handleDelete}
+                />
+              </div>
+            ))}
+          </div>
+
+          {meds.length > 0 && (
+            <button
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border py-2.5 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+              onClick={() => {
+                setActiveMethod("manual")
+                setShowAddForm(true)
+              }}
+              aria-label="Add another medication manually"
+            >
+              <Plus className="w-4 h-4" />
+              Add another medication
+            </button>
+          )}
+        </section>
       </main>
 
-      {/* Bottom navigation bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border px-4 py-3 flex gap-3 shadow-lg">
-        <button
-          type="button"
-          onClick={() => router.push("/home-meds")}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back
-        </button>
-        <button
-          type="button"
-          disabled={meds.length === 0}
-          onClick={() => router.push("/medication-review")}
-          className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Next: Review
-          <ArrowRight className="w-4 h-4" />
-        </button>
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-20 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80"
+        aria-label="Step navigation"
+      >
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
+          <Button variant="outline" className="gap-2" size="sm" onClick={() => router.push('/home-meds')}>
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Back</span>
+            <span className="sm:hidden">Back</span>
+          </Button>
+
+          <div className="text-xs text-muted-foreground text-center leading-relaxed hidden sm:block">
+            {meds.length} discharge med{meds.length !== 1 && "s"} entered
+          </div>
+
+          <Button className="gap-2" size="sm" disabled={meds.length === 0} onClick={() => router.push('/medication-review')}>
+            <span className="hidden sm:inline">Next: Review</span>
+            <span className="sm:hidden">Next</span>
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        </div>
       </nav>
     </div>
   )

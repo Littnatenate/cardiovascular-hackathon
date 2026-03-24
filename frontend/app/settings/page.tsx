@@ -11,9 +11,14 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
 
+  const handleBack = () => {
+    const lastMain = sessionStorage.getItem('lastMainPage') || '/dashboard'
+    router.push(lastMain)
+  }
+
   return (
     <div className="min-h-screen bg-background p-6 max-w-2xl mx-auto">
-      <button onClick={() => router.back()} className="text-sm font-medium text-muted-foreground flex items-center gap-1.5 mb-8 hover:text-foreground transition-colors">
+      <button onClick={handleBack} className="text-sm font-medium text-muted-foreground flex items-center gap-1.5 mb-8 hover:text-foreground transition-colors">
         <ArrowLeft className="w-4 h-4" /> Go Back
       </button>
       

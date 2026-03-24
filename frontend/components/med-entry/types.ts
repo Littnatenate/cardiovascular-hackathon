@@ -1,10 +1,3 @@
-export type MedSource = "photo" | "manual" | "admission" | "voice";
+import type { MedSource, Medication } from "@/lib/types";
 
-export interface Medication {
-  id: string;
-  drugName: string;
-  strength: string;
-  dose: string;
-  frequency: string;
-  source: MedSource;
-}
+export type { MedSource, Medication };

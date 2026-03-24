@@ -1,4 +1,4 @@
-import type { DischargeSession, Nurse } from './types'
+import type { DischargeSession, Nurse, MedSource } from './types'
 
 export const currentNurse: Nurse = {
   id: '1',
@@ -79,6 +79,52 @@ export const dischargeSessions: DischargeSession[] = [
     assignedNurse: 'Sarah Chen',
   },
 ]
+
+export const SAMPLE_HOME_MEDS = [
+  {
+    id: 'h1',
+    drugName: "Amlodipine",
+    strength: "5 mg",
+    dose: "1 tablet",
+    frequency: "Once daily",
+    source: "manual" as MedSource,
+  },
+  {
+    id: 'h2',
+    drugName: "Metformin",
+    strength: "500 mg",
+    dose: "1 tablet",
+    frequency: "Twice daily",
+    source: "manual" as MedSource,
+  }
+];
+
+export const SAMPLE_DISCHARGE_MEDS = [
+  {
+    id: 'd1',
+    drugName: "Amlodipine",
+    strength: "10 mg",
+    dose: "1 tablet",
+    frequency: "Once daily",
+    source: "manual" as MedSource,
+  },
+  {
+    id: 'd2',
+    drugName: "Metformin",
+    strength: "500 mg",
+    dose: "1 tablet",
+    frequency: "Twice daily",
+    source: "manual" as MedSource,
+  },
+  {
+    id: 'd3',
+    drugName: "Clopidogrel",
+    strength: "75 mg",
+    dose: "1 tablet",
+    frequency: "Once daily",
+    source: "manual" as MedSource,
+  }
+];
 
 export function formatRelativeTime(date: Date): string {
   const now = new Date()

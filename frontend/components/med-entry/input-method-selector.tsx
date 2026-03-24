@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 interface InputMethodSelectorProps {
   onSelect: (method: MedSource) => void;
   activeMethod: MedSource | null;
+  omitMethods?: MedSource[];
 }
 
 const methods: {
@@ -34,29 +35,25 @@ const methods: {
     icon: <ClipboardList className="w-6 h-6" />,
     description: "Pull from admission records",
   },
-  {
-    key: "voice",
-    label: "Voice Entry",
-    icon: <Mic className="w-6 h-6" />,
-    description: "Dictate — AI transcribes",
-    disabled: true,
-  },
 ];
 
 export function InputMethodSelector({
   onSelect,
   activeMethod,
+  omitMethods = [],
 }: InputMethodSelectorProps) {
+  const visibleMethods = methods.filter((m) => !omitMethods.includes(m.key));
+
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {methods.map((m) => (
+    <div className="flex flex-wrap justify-center gap-3">
+      {visibleMethods.map((m) => (
         <button
           key={m.key}
           disabled={m.disabled}
           onClick={() => !m.disabled && onSelect(m.key)}
           aria-pressed={activeMethod === m.key}
           className={cn(
-            "flex flex-col items-center gap-2 rounded-lg border-2 px-3 py-4 text-sm font-medium transition-all",
+            "flex flex-col flex-1 min-w-[140px] max-w-[200px] items-center gap-2 rounded-lg border-2 px-3 py-4 text-sm font-medium transition-all",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             activeMethod === m.key
               ? "border-primary bg-primary text-primary-foreground shadow-md"

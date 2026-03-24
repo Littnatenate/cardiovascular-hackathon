@@ -8,6 +8,7 @@ import { AddMedForm } from "./add-med-form";
 import { InputMethodSelector } from "./input-method-selector";
 import { Button } from "@/components/ui/button";
 import { SessionTopBar } from "@/components/session-top-bar";
+import { SAMPLE_HOME_MEDS } from "@/lib/mock-data";
 import {
   Empty,
   EmptyMedia,
@@ -35,21 +36,20 @@ export function HomeMedsEntry() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [patientData, setPatientData] = useState({ name: PATIENT_NAME, id: SESSION_ID });
 
-  // Load patient data from session (friend's feature)
   useEffect(() => {
-    const saved = sessionStorage.getItem("dischargeSession");
-    if (saved) {
-      const data = JSON.parse(saved);
+    let activeId = SESSION_ID;
+    const sessionData = sessionStorage.getItem("dischargeSession");
+    if (sessionData) {
+      const parsed = JSON.parse(sessionData);
+      if (parsed.id) activeId = parsed.id;
       setPatientData({
-        name: data.patientName,
-        id: data.id || SESSION_ID
+        name: parsed.patientName || PATIENT_NAME,
+        id: activeId
       });
     }
-  }, []);
 
-  // Load from localStorage on mount (AI persistence)
-  useEffect(() => {
-    const saved = localStorage.getItem('medrecon_home_list');
+    const savedKey = `medrecon_home_list_${activeId}`;
+    const saved = localStorage.getItem(savedKey);
     if (saved) {
       try {
         setMeds(JSON.parse(saved));
@@ -57,17 +57,22 @@ export function HomeMedsEntry() {
         console.error("Failed to parse saved home meds", e);
       }
     } else {
-      setMeds([]);
+      // Seed data for demo sessions 1-7
+      if (['1', '2', '3', '4', '5', '6', '7'].includes(activeId)) {
+        setMeds(SAMPLE_HOME_MEDS.map(m => ({ ...m, id: crypto.randomUUID() })));
+      } else {
+        setMeds([]);
+      }
     }
     setIsInitialized(true);
   }, []);
 
-  // Save to localStorage on change (AI persistence)
   useEffect(() => {
     if (isInitialized) {
-      localStorage.setItem('medrecon_home_list', JSON.stringify(meds));
+      const savedKey = `medrecon_home_list_${patientData.id}`;
+      localStorage.setItem(savedKey, JSON.stringify(meds));
     }
-  }, [meds, isInitialized]);
+  }, [meds, isInitialized, patientData.id]);
 
   function handleMethodSelect(method: MedSource) {
     setActiveMethod(method);
@@ -172,7 +177,7 @@ export function HomeMedsEntry() {
           {meds.length > 0 && (
             <div
               className="mb-1.5 hidden sm:grid px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-              style={{ gridTemplateColumns: "1fr 1px 6rem 1px 10rem 1px 6rem 2.5rem" }}
+              style={{ gridTemplateColumns: "1fr 1px 6rem 1px 12rem" }}
               aria-hidden="true"
             >
               <span>Drug / Strength</span>
@@ -180,9 +185,6 @@ export function HomeMedsEntry() {
               <span>Dose</span>
               <span />
               <span>Frequency</span>
-              <span />
-              <span>Source</span>
-              <span />
             </div>
           )}
 

@@ -7,7 +7,18 @@ import { SessionList } from '@/components/session-list'
 import { Button } from '@/components/ui/button'
 import { currentNurse, dischargeSessions } from '@/lib/mock-data'
 import type { DischargeSession, SessionStatus } from '@/lib/types'
-import { Plus, Activity } from 'lucide-react'
+import { Plus, Activity, Trash2 } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { useToast } from '@/hooks/use-toast'
 import { Toaster } from '@/components/ui/toaster'
 import { useRouter } from 'next/navigation'
@@ -17,6 +28,8 @@ export default function DashboardPage() {
   const [sessions, setSessions] = useState<DischargeSession[]>([])
   const [statusFilter, setStatusFilter] = useState<SessionStatus | 'all'>('all')
   const [sortBy, setSortBy] = useState<SortOption>('updated-desc')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [isSelectMode, setIsSelectMode] = useState(false)
   const { toast } = useToast()
 
   // Load from local storage
@@ -77,20 +90,56 @@ export default function DashboardPage() {
       ward: session.ward,
       bedNumber: session.bed,
     }));
+    
+    // If returning to a completed/escalated session, unlock all steps
     if (session.status === 'completed' || session.status === 'escalated') {
-      sessionStorage.setItem('sessionMaxStep', "5");
-    } else {
-      sessionStorage.removeItem('sessionMaxStep');
+      localStorage.setItem(`medsafe_step_${session.id}`, "5");
     }
+    
     router.push('/home-meds')
   }
 
-  const handleArchive = (session: DischargeSession) => {
-    setSessions((prev) => prev.filter((s) => s.id !== session.id))
-    toast({
-      title: 'Session Archived',
-      description: `${session.patientName}'s session has been archived.`,
+  const handleDelete = (session: DischargeSession) => {
+    const updatedSessions = sessions.filter((s) => s.id !== session.id)
+    setSessions(updatedSessions)
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      next.delete(session.id)
+      return next
     })
+    localStorage.setItem('medsafe_sessions', JSON.stringify(updatedSessions))
+    toast({
+      title: 'Session Deleted',
+      description: `${session.patientName}'s session has been removed.`,
+    })
+  }
+
+  const handleSelect = (id: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(filteredSessions.map((s) => s.id)))
+    } else {
+      setSelectedIds(new Set())
+    }
+  }
+
+  const handleDeleteSelected = () => {
+    const updatedSessions = sessions.filter((s) => !selectedIds.has(s.id))
+    setSessions(updatedSessions)
+    localStorage.setItem('medsafe_sessions', JSON.stringify(updatedSessions))
+    toast({
+      title: selectedIds.size === 1 ? 'Session Deleted' : 'Sessions Deleted',
+      description: `${selectedIds.size} session${selectedIds.size === 1 ? '' : 's'} have been removed.`,
+    })
+    setSelectedIds(new Set())
   }
 
   const handleLogout = () => {
@@ -103,6 +152,8 @@ export default function DashboardPage() {
   const resetFilters = () => {
     setStatusFilter('all')
     setSortBy('updated-desc')
+    setSelectedIds(new Set())
+    setIsSelectMode(false)
   }
 
   // Calculate stats
@@ -175,14 +226,71 @@ export default function DashboardPage() {
             onReset={resetFilters}
             sessionCount={filteredSessions.length}
             totalCount={sessions.length}
-          />
+          >
+            <div className="flex items-center gap-2 border-l border-border pl-4">
+              {selectedIds.size > 0 ? (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" className="gap-2">
+                      <Trash2 className="h-4 w-4" />
+                      Delete Selected ({selectedIds.size})
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete {selectedIds.size} Session{selectedIds.size === 1 ? '' : 's'}?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to remove {selectedIds.size === 1 ? 'this session' : 'these sessions'}? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        {selectedIds.size === 1 ? 'Delete Session' : 'Delete All'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ) : (
+                <Button 
+                  variant={isSelectMode ? "secondary" : "outline"} 
+                  size="sm" 
+                  onClick={() => {
+                    setIsSelectMode(!isSelectMode)
+                    setSelectedIds(new Set())
+                  }}
+                >
+                  {isSelectMode ? "Cancel Select" : "Select Sessions"}
+                </Button>
+              )}
+            </div>
+          </FilterBar>
         </div>
+
+        {/* Bulk Selection Info */}
+        {isSelectMode && filteredSessions.length > 0 && (
+          <div className="mb-3 flex items-center gap-2 px-1 animate-in fade-in slide-in-from-top-1">
+            <input
+              type="checkbox"
+              id="select-all"
+              className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              checked={selectedIds.size === filteredSessions.length && filteredSessions.length > 0}
+              onChange={(e) => handleSelectAll(e.target.checked)}
+            />
+            <label htmlFor="select-all" className="text-xs font-medium text-muted-foreground cursor-pointer select-none">
+              {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select All'}
+            </label>
+          </div>
+        )}
 
         {/* Session List */}
         <SessionList
           sessions={filteredSessions}
           onSessionTap={handleSessionTap}
-          onArchive={handleArchive}
+          onDelete={handleDelete}
+          selectedIds={selectedIds}
+          onSelect={handleSelect}
+          isSelectMode={isSelectMode}
         />
 
         {/* Activity Indicator */}

@@ -11,7 +11,8 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { LogOut, User, Settings, ChevronDown, Shield } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
+import { useEffect } from 'react'
 import type { Nurse } from '@/lib/types'
 
 interface NavigationHeaderProps {
@@ -21,6 +22,15 @@ interface NavigationHeaderProps {
 
 export function NavigationHeader({ nurse, onLogout }: NavigationHeaderProps) {
   const router = useRouter()
+  const pathname = usePathname()
+
+  // Track the last "main" page for smart navigation
+  useEffect(() => {
+    const systemPages = ['/profile', '/settings', '/login', '/signup']
+    if (!systemPages.includes(pathname)) {
+      sessionStorage.setItem('lastMainPage', pathname)
+    }
+  }, [pathname])
   const initials = nurse.name
     .split(' ')
     .map((n) => n[0])

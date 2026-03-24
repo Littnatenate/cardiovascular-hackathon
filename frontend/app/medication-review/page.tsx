@@ -1,14 +1,23 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, ScanSearch, ShieldCheck } from "lucide-react"
+import { ArrowLeft, ScanSearch, ShieldCheck, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PatientBanner } from "@/components/med-review/patient-banner"
 import { MedListColumn, type Medication } from "@/components/med-review/med-list-column"
 import { reconcileMedications } from "@/lib/api"
 import { SessionLayout } from "@/components/session-layout"
 import { SessionTopBar } from "@/components/session-top-bar"
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog"
 
 const DEFAULT_PATIENT = {
   name: "Margaret Thompson",
@@ -26,6 +35,7 @@ export default function PreAnalysisReview() {
   const [homeMeds, setHomeMeds] = useState<Medication[]>([])
   const [dischargeMeds, setDischargeMeds] = useState<Medication[]>([])
   const [patient, setPatient] = useState(DEFAULT_PATIENT)
+  const isCancelledRef = useRef(false)
 
   useEffect(() => {
     // Load patient data from session (friend's feature)
@@ -74,6 +84,8 @@ export default function PreAnalysisReview() {
     }
     
     setScreen("analyzing")
+    isCancelledRef.current = false
+    
     try {
       const formattedHome = homeMeds.map(m => ({ name: m.name, dose: m.strength, frequency: m.frequency }))
       const formattedDischarge = dischargeMeds.map(m => ({ name: m.name, dose: m.strength, frequency: m.frequency }))
@@ -82,16 +94,31 @@ export default function PreAnalysisReview() {
       const allergyList = Array.isArray(patient.allergies) ? patient.allergies : []
       const results = await reconcileMedications(formattedHome, formattedDischarge, allergyList)
       
+      if (isCancelledRef.current) {
+        setScreen("review")
+        return // Abort redirect if cancelled
+      }
+      
       localStorage.setItem('recon_results', JSON.stringify(results))
       localStorage.setItem('recon_patient', JSON.stringify(patient))
       
       setScreen("done")
-      setTimeout(() => router.push('/ai-comparison'), 800)
+      setTimeout(() => {
+        if (!isCancelledRef.current) {
+           router.push('/ai-comparison')
+        }
+      }, 800)
     } catch (err) {
+      if (isCancelledRef.current) return
       console.error("AI Analysis failed:", err)
       setScreen("review")
       alert("AI Service unreachable. Please ensure the Python backend is running on port 8000.")
     }
+  }
+
+  const handleCancelAnalysis = () => {
+    isCancelledRef.current = true
+    setScreen("review")
   }
 
   return (
@@ -145,14 +172,9 @@ export default function PreAnalysisReview() {
             size="lg"
             className="w-full max-w-sm gap-2 text-base font-semibold shadow-md"
             onClick={handleRunAnalysis}
-            disabled={screen !== "review"}
+            disabled={screen === "done"}
           >
-            {screen === "analyzing" ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground/40 border-t-primary-foreground" />
-                Analyzing medications...
-              </>
-            ) : screen === "done" ? (
+            {screen === "done" ? (
               <>
                 <ShieldCheck className="h-5 w-5" />
                 Analysis Complete — View Results
@@ -164,9 +186,28 @@ export default function PreAnalysisReview() {
               </>
             )}
           </Button>
-
         </div>
       </main>
+
+      {/* Loading Modal */}
+      <AlertDialog open={screen === "analyzing"}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader className="items-center text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+            <AlertDialogTitle className="text-xl">Analyzing Medications</AlertDialogTitle>
+            <AlertDialogDescription className="text-center">
+              The AI Safety Engine is currently cross-referencing discharge medications against home meds, known guidelines, and allergy profiles.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:justify-center">
+            <AlertDialogCancel onClick={handleCancelAnalysis} className="mt-4">
+              Cancel Analysis
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SessionLayout>
   )
 }

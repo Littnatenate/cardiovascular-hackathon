@@ -7,14 +7,20 @@ import { FileText, AlertCircle } from 'lucide-react'
 interface SessionListProps {
   sessions: DischargeSession[]
   onSessionTap?: (session: DischargeSession) => void
-  onArchive?: (session: DischargeSession) => void
+  onDelete?: (session: DischargeSession) => void
+  selectedIds?: Set<string>
+  onSelect?: (id: string, checked: boolean) => void
+  isSelectMode?: boolean
   isLoading?: boolean
 }
 
 export function SessionList({
   sessions,
   onSessionTap,
-  onArchive,
+  onDelete,
+  selectedIds,
+  onSelect,
+  isSelectMode,
   isLoading,
 }: SessionListProps) {
   if (isLoading) {
@@ -71,7 +77,10 @@ export function SessionList({
           key={session.id}
           session={session}
           onTap={onSessionTap}
-          onArchive={onArchive}
+          onDelete={onDelete}
+          isSelected={selectedIds?.has(session.id)}
+          onSelect={onSelect}
+          isSelectMode={isSelectMode}
         />
       ))}
     </div>
