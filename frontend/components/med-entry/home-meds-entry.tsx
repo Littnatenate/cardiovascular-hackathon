@@ -108,14 +108,15 @@ export function HomeMedsEntry() {
   }
 
   return (
-    <div className="min-h-screen bg-background font-sans flex flex-col">
+    <div className="flex-1 bg-background font-sans flex flex-col">
       <SessionTopBar 
         patientName={patientData.name} 
         patientId={patientData.id} 
         step={2} 
+        totalSteps={6}
       />
 
-      <main className="mx-auto max-w-3xl px-4 pb-32 pt-6">
+      <main className="mx-auto max-w-3xl px-4 pb-32 pt-6 w-full flex-1">
         {/* Section heading */}
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-1">
@@ -176,17 +177,17 @@ export function HomeMedsEntry() {
           {/* Table header — desktop only */}
           {meds.length > 0 && (
             <div
-              className="mb-1.5 hidden sm:grid w-full px-4 border border-transparent text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-              style={{ gridTemplateColumns: "minmax(0, 1fr) 1px 6rem 1px 6rem 1px 12rem 80px" }}
+              className="mb-1.5 hidden md:grid w-full px-4 border border-transparent text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
+              style={{ gridTemplateColumns: "1fr auto 6rem auto 6rem auto 10rem 80px" }}
               aria-hidden="true"
             >
-              <div className="pr-4">Drug</div>
-              <div />
-              <div className="px-2">Dose</div>
-              <div />
-              <div className="px-2">Quantity</div>
-              <div />
-              <div className="px-2">Frequency</div>
+              <div className="md:pr-4">Drug</div>
+              <div className="hidden md:block w-px h-0 mx-2" />
+              <div className="">Strength</div>
+              <div className="hidden md:block w-px h-0 mx-2" />
+              <div className="">Quantity</div>
+              <div className="hidden md:block w-px h-0 mx-2" />
+              <div className="">Frequency</div>
               <div />
             </div>
           )}

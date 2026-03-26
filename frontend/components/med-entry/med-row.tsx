@@ -94,44 +94,61 @@ export function MedRow({ med, onUpdate, onDelete }: MedRowProps) {
 
   return (
     <div 
-      className="group grid w-full items-center rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:bg-accent/30"
-      style={{ gridTemplateColumns: "minmax(0, 1fr) 1px 6rem 1px 6rem 1px 12rem 80px" }}
+      className="group relative rounded-xl border border-border bg-card p-4 transition-all hover:bg-accent/30 hover:border-primary/20 shadow-sm"
     >
-      <div className="min-w-0 pr-4">
-        <p className="font-semibold text-foreground truncate">{med.drugName}</p>
-      </div>
-      <div className="hidden sm:block w-px h-8 bg-border" aria-hidden="true" />
-      <div className="text-sm text-foreground px-2">
-        <span className="font-medium">{med.strength}</span>
-      </div>
-      <div className="hidden sm:block w-px h-8 bg-border" aria-hidden="true" />
-      <div className="text-sm text-foreground px-2">
-        <span className="font-medium">{med.dose}</span>
-      </div>
-      <div className="hidden sm:block w-px h-8 bg-border" aria-hidden="true" />
-      <div className="text-sm text-muted-foreground leading-relaxed truncate px-2">
-        {med.frequency}
-      </div>
+      <div className="flex flex-col md:grid md:grid-cols-[1fr_auto_6rem_auto_6rem_auto_10rem_80px] md:items-center gap-2 md:gap-0">
+        
+        {/* Drug name - Full width on mobile */}
+        <div className="min-w-0 md:pr-4">
+          <p className="font-bold text-foreground text-base md:text-sm truncate">{med.drugName}</p>
+        </div>
 
-      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-8 w-8 text-muted-foreground hover:text-foreground"
-          onClick={() => setEditing(true)}
-          aria-label={`Edit ${med.drugName}`}
-        >
-          <Pencil className="w-3.5 h-3.5" />
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-          onClick={() => onDelete(med.id)}
-          aria-label={`Delete ${med.drugName}`}
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </Button>
+        {/* Dividers hidden on mobile */}
+        <div className="hidden md:block w-px h-8 bg-border mx-2" aria-hidden="true" />
+        
+        {/* Secondary details in a grid on mobile for compactness */}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1 md:contents">
+          <div className="flex flex-col md:block">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold md:hidden">Strength</span>
+            <span className="text-sm font-medium text-foreground">{med.strength}</span>
+          </div>
+
+          <div className="hidden md:block w-px h-8 bg-border mx-2" aria-hidden="true" />
+
+          <div className="flex flex-col md:block">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold md:hidden">Quantity</span>
+            <span className="text-sm font-medium text-foreground">{med.dose}</span>
+          </div>
+
+          <div className="hidden md:block w-px h-8 bg-border mx-2" aria-hidden="true" />
+
+          <div className="flex flex-col md:block col-span-2 md:col-span-1">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold md:hidden">Frequency</span>
+            <span className="text-sm text-muted-foreground leading-relaxed truncate">{med.frequency}</span>
+          </div>
+        </div>
+
+        {/* Actions - Bottom right on mobile, end of row on desktop */}
+        <div className="flex items-center justify-end gap-1 mt-2 md:mt-0 pt-2 md:pt-0 border-t md:border-0 border-border md:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+            onClick={() => setEditing(true)}
+            aria-label={`Edit ${med.drugName}`}
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+            onClick={() => onDelete(med.id)}
+            aria-label={`Delete ${med.drugName}`}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        </div>
       </div>
     </div>
   );

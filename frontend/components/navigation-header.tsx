@@ -13,6 +13,7 @@ import { LogOut, User, Settings, ChevronDown, Shield } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect } from 'react'
+import { cn } from '@/lib/utils'
 import type { Nurse } from '@/lib/types'
 
 interface NavigationHeaderProps {
@@ -37,8 +38,22 @@ export function NavigationHeader({ nurse, onLogout }: NavigationHeaderProps) {
     .join('')
     .toUpperCase()
 
+  const isSessionPage = [
+    '/home-meds', 
+    '/discharge-meds', 
+    '/medication-review', 
+    '/ai-comparison', 
+    '/patient-instructions',
+    '/new-session',
+    '/pharmacist-escalation',
+    '/session-summary'
+  ].some(path => pathname.startsWith(path))
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-card shadow-sm">
+    <header className={cn(
+      "sticky top-0 z-50 w-full border-b border-border bg-card shadow-sm transition-all duration-300",
+      isSessionPage && "hidden md:block" // Hide on mobile for session pages
+    )}>
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo and App Name */}
         <Link href="/dashboard" className="flex items-center gap-3 group">
