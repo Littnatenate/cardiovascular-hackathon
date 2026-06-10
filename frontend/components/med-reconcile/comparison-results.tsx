@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { MedResult, SummaryCount, MedStatus } from "./types";
 import { SAMPLE_RESULTS } from "./sample-data";
 import { SummaryBar } from "./summary-bar";
@@ -9,96 +9,140 @@ import { MedCard } from "./med-card";
 import { ChevronLeft, ChevronRight, AlertTriangle, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { SessionTopBar } from "@/components/session-top-bar"
+import { SessionTopBar } from "@/components/session-top-bar";
+import { getSession, updateSession } from "@/lib/api";
 
 const SORT_ORDER = ["interaction", "stopped", "changed", "uncertain", "new", "continued"];
 
 export function ComparisonResults() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [results, setResults] = useState<MedResult[]>([]);
   const [patient, setPatient] = useState<any>(null);
   const [detailsOpen, setDetailsOpen] = useState<string | null>(null);
   const [overrideOpen, setOverrideOpen] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const sessionId = searchParams.get("session_id") || (() => {
+    try {
+      const raw = sessionStorage.getItem("dischargeSession");
+      return raw ? JSON.parse(raw).id : null;
+    } catch (e) { return null; }
+  })();
+
   useEffect(() => {
-    const rawResults = localStorage.getItem('recon_results');
-    const rawPatient = localStorage.getItem('recon_patient');
-    if (rawResults) {
-      const data = JSON.parse(rawResults);
-      setPatient(rawPatient ? JSON.parse(rawPatient) : null);
-      
-      const mapped: MedResult[] = [];
-      
-      // 1. Map Interactions (DDInter)
-      if (data.interactions) {
-        data.interactions.forEach((i: any, idx: number) => {
-          mapped.push({
-            id: `int-${idx}`,
-            status: "interaction",
-            drugName: `${i.drug_a} + ${i.drug_b}`,
-            summary: `${i.severity.toUpperCase()}: ${i.effect}. Recommendation: ${i.recommendation}`,
-            confidence: "high",
-            needsConfirmation: true,
-            patientPrompt: "Our AI detected a possible interaction between these two medicines."
-          });
-        });
-      }
-
-      // 2. Map Stopped Meds
-      if (data.stopped_medications) {
-        data.stopped_medications.forEach((m: any) => {
-          mapped.push({
-            id: `stop-${m.name}`,
-            status: "stopped",
-            drugName: m.name,
-            summary: `Not found on discharge list. (Home dose: ${m.dose})`,
-            confidence: "high",
-            needsConfirmation: true,
-            patientPrompt: `Why did you stop taking ${m.name}?`
-          });
-        });
-      }
-
-      // 3. Map Discrepancies (Changed)
-      if (data.discrepancies) {
-        data.discrepancies.forEach((m: any) => {
-          const isBrandGeneric = data.rxnorm_mappings?.some((rm: any) => rm.original === m.name);
-          mapped.push({
-            id: `diff-${m.name}`,
-            status: "changed",
-            drugName: m.name,
-            originalNames: { home: m.name, discharge: m.name },
-            summary: `${m.reason} Home: ${m.home_dose} ${m.home_freq} ➔ Discharge: ${m.discharge_dose} ${m.discharge_freq}`,
-            confidence: "high",
-            confidenceNote: isBrandGeneric ? "Verified via RxNorm brand-generic mapping" : undefined,
-            needsConfirmation: true,
-            patientPrompt: `Your dose for ${m.name} has changed. Do you have the new strength bottles?`
-          });
-        });
-      }
-
-      // 4. Map New Meds
-      if (data.new_medications) {
-        data.new_medications.forEach((m: any) => {
-          mapped.push({
-            id: `new-${m.name}`,
-            status: "new",
-            drugName: m.name,
-            summary: `Newly prescribed: ${m.dose} ${m.frequency}`,
-            confidence: "high",
-            needsConfirmation: true,
-            patientPrompt: `You have been prescribed ${m.name}. Do you have questions about this new medicine?`
-          });
-        });
-      }
-      
-      setResults(mapped.length > 0 ? mapped : SAMPLE_RESULTS);
-    } else {
-      setResults(SAMPLE_RESULTS);
+    if (!sessionId) {
+      router.push("/dashboard");
+      return;
     }
-    setIsLoading(false);
-  }, []);
+    
+    async function loadResults() {
+      try {
+        const session = await getSession(sessionId);
+        setPatient({
+          name: session.patient_name,
+          mrn: session.patient_id || "MRN-002847",
+          allergies: session.allergies || [],
+        });
+        
+        const data = session.reconciliation_results || {};
+        
+        // If results are already confirmed and saved, use those
+        if (data.results && Array.isArray(data.results)) {
+          setResults(data.results);
+          setIsLoading(false);
+          return;
+        }
+
+        const mapped: MedResult[] = [];
+        
+        // 1. Map Interactions (DDInter)
+        if (data.interactions) {
+          data.interactions.forEach((i: any, idx: number) => {
+            mapped.push({
+              id: `int-${idx}`,
+              status: "interaction",
+              drugName: `${i.drug_a} + ${i.drug_b}`,
+              summary: `${i.severity.toUpperCase()}: ${i.effect}. Recommendation: ${i.recommendation}`,
+              confidence: "high",
+              needsConfirmation: true,
+              patientPrompt: "Our AI detected a possible interaction between these two medicines."
+            });
+          });
+        }
+
+        // 2. Map Stopped Meds
+        if (data.stopped_medications) {
+          data.stopped_medications.forEach((m: any) => {
+            mapped.push({
+              id: `stop-${m.name}`,
+              status: "stopped",
+              drugName: m.name,
+              summary: `Not found on discharge list. (Home dose: ${m.dose})`,
+              confidence: "high",
+              needsConfirmation: true,
+              patientPrompt: `Why did you stop taking ${m.name}?`
+            });
+          });
+        }
+
+        // 3. Map Discrepancies (Changed)
+        if (data.discrepancies) {
+          data.discrepancies.forEach((m: any) => {
+            const isBrandGeneric = data.rxnorm_mappings?.some((rm: any) => rm.original === m.name);
+            mapped.push({
+              id: `diff-${m.name}`,
+              status: "changed",
+              drugName: m.name,
+              originalNames: { home: m.name, discharge: m.name },
+              summary: `${m.reason} Home: ${m.home_dose} ${m.home_freq} ➔ Discharge: ${m.discharge_dose} ${m.discharge_freq}`,
+              confidence: "high",
+              confidenceNote: isBrandGeneric ? "Verified via RxNorm brand-generic mapping" : undefined,
+              needsConfirmation: true,
+              patientPrompt: `Your dose for ${m.name} has changed. Do you have the new strength bottles?`
+            });
+          });
+        }
+
+        // 4. Map New Meds
+        if (data.new_medications) {
+          data.new_medications.forEach((m: any) => {
+            mapped.push({
+              id: `new-${m.name}`,
+              status: "new",
+              drugName: m.name,
+              summary: `Newly prescribed: ${m.dose} ${m.frequency}`,
+              confidence: "high",
+              needsConfirmation: true,
+              patientPrompt: `You have been prescribed ${m.name}. Do you have questions about this new medicine?`
+            });
+          });
+        }
+        
+        const finalResults = mapped.length > 0 ? mapped : SAMPLE_RESULTS;
+        setResults(finalResults);
+      } catch (err) {
+        console.error("Failed to load reconciliation results:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadResults();
+  }, [sessionId, router]);
+
+  // Save to DB when results change
+  useEffect(() => {
+    if (!isLoading && results.length > 0 && sessionId) {
+      async function saveResults() {
+        try {
+          await updateSession(sessionId, { reconciliation_results: { results } });
+        } catch (err) {
+          console.error("Failed to save comparison results:", err);
+        }
+      }
+      saveResults();
+    }
+  }, [results, isLoading, sessionId]);
 
   const sortedResults = useMemo(
     () =>
@@ -131,8 +175,15 @@ export function ComparisonResults() {
     );
   }
 
-  function handleOverride(id: string) {
-    setOverrideOpen(id === overrideOpen ? null : id);
+  function handleOverride(id: string, reason: string) {
+    setResults((prev) =>
+      prev.map((r) => (r.id === id ? { 
+        ...r, 
+        confirmed: true, 
+        overridden: true, 
+        summary: `${r.summary} (Override Reason: ${reason})` 
+      } : r))
+    );
   }
 
   function handleDetails(id: string) {
@@ -215,7 +266,7 @@ export function ComparisonResults() {
           variant="outline"
           className="gap-1.5 font-semibold"
           aria-label="Back to review"
-          onClick={() => router.push('/medication-review')}
+          onClick={() => router.push(`/medication-review?session_id=${sessionId}`)}
         >
           <ChevronLeft className="w-4 h-4" />
           Back to Review
@@ -229,7 +280,7 @@ export function ComparisonResults() {
               : "bg-primary hover:bg-primary/90 text-primary-foreground"
           )}
           aria-label="Generate patient instructions"
-          onClick={() => router.push('/patient-instructions')}
+          onClick={() => router.push(`/patient-instructions?session_id=${sessionId}`)}
         >
           Generate Patient Instructions
           <ChevronRight className="w-4 h-4" />

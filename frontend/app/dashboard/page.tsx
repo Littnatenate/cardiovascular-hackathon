@@ -5,12 +5,12 @@ import { NavigationHeader } from '@/components/navigation-header'
 import { FilterBar, type SortOption } from '@/components/filter-bar'
 import { SessionList } from '@/components/session-list'
 import { Button } from '@/components/ui/button'
-import { currentNurse, dischargeSessions } from '@/lib/mock-data'
 import type { DischargeSession, SessionStatus } from '@/lib/types'
 import { Plus, Activity } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Toaster } from '@/components/ui/toaster'
 import { useRouter } from 'next/navigation'
+import { getSessions } from '@/lib/api'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -19,21 +19,34 @@ export default function DashboardPage() {
   const [sortBy, setSortBy] = useState<SortOption>('updated-desc')
   const { toast } = useToast()
 
-  // Load from local storage
+  // Load from backend database
   useEffect(() => {
-    const saved = localStorage.getItem('medsafe_sessions')
-    if (saved) {
-      const parsed = JSON.parse(saved).map((s: any) => ({
-        ...s,
-        updatedAt: new Date(s.updatedAt),
-        createdAt: new Date(s.createdAt)
-      }))
-      setSessions(parsed)
-    } else {
-      setSessions(dischargeSessions)
-      localStorage.setItem('medsafe_sessions', JSON.stringify(dischargeSessions))
+    async function loadSessions() {
+      try {
+        const data = await getSessions()
+        const mapped = data.map((s: any) => ({
+          id: s.id,
+          patientName: s.patient_name,
+          ward: s.ward || 'N/A',
+          bed: s.bed_number || 'N/A',
+          status: s.status,
+          createdAt: new Date(s.created_at),
+          updatedAt: new Date(s.updated_at),
+          assignedNurse: 'Sarah Chen', // Simulating currently logged in user
+          mrn: s.patient_id,
+        }))
+        setSessions(mapped)
+      } catch (err) {
+        console.error("Failed to load sessions:", err)
+        toast({
+          title: 'Connection Error',
+          description: 'Could not load sessions from the server. Ensure the backend is running.',
+          variant: 'destructive',
+        })
+      }
     }
-  }, [])
+    loadSessions()
+  }, [toast])
 
   // Filter and sort sessions
   const filteredSessions = useMemo(() => {
@@ -82,7 +95,7 @@ export default function DashboardPage() {
     } else {
       sessionStorage.removeItem('sessionMaxStep');
     }
-    router.push('/home-meds')
+    router.push(`/home-meds?session_id=${session.id}`)
   }
 
   const handleArchive = (session: DischargeSession) => {

@@ -2,12 +2,7 @@ import os
 from openai import AsyncOpenAI
 from app.services.scrubber import scrubber
 
-# Reuse the same Local LLM configuration
-LLM_BASE_URL = os.getenv("MEDSAFE_LLM_BASE_URL", "http://localhost:1234/v1")
-LLM_API_KEY = os.getenv("MEDSAFE_LLM_API_KEY", "lm-studio")
-LLM_MODEL = os.getenv("MEDSAFE_LLM_MODEL", "qwen2.5-7b-instruct-1m")
-
-client = AsyncOpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
+from app.services.llm_client import client, LLM_MODEL, generate_chat_completion
 
 WHATSAPP_PROMPT = """
 You are MedSafe, a clinical assistant creating an ultra-short WhatsApp summary for a patient's family member or caregiver after hospital discharge.
@@ -42,7 +37,7 @@ async def generate_whatsapp_summary(full_instructions_md: str, caregiver_lang: s
     )
     
     try:
-        response = await client.chat.completions.create(
+        response = await generate_chat_completion(
             model=LLM_MODEL,
             messages=[
                 {

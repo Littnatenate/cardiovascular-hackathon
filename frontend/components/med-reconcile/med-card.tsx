@@ -10,12 +10,14 @@ import { Button } from "@/components/ui/button";
 interface MedCardProps {
   result: MedResult;
   onConfirm: (id: string) => void;
-  onOverride: (id: string) => void;
+  onOverride: (id: string, reason: string) => void;
   onDetails: (id: string) => void;
 }
 
 export function MedCard({ result, onConfirm, onOverride, onDetails }: MedCardProps) {
   const [expanded, setExpanded] = useState(result.status !== "continued");
+  const [showOverrideForm, setShowOverrideForm] = useState(false);
+  const [overrideReason, setOverrideReason] = useState("");
   const cfg = STATUS_CONFIG[result.status];
 
   const isContinued = result.status === "continued";
@@ -65,9 +67,14 @@ export function MedCard({ result, onConfirm, onOverride, onDetails }: MedCardPro
                 Auto-confirmed
               </span>
             )}
-            {result.confirmed && !result.autoConfirmed && (
+            {result.confirmed && !result.autoConfirmed && !result.overridden && (
               <span className="text-xs font-semibold text-[color:var(--status-continued-badge)] bg-[color:var(--status-continued-bg)] border border-[color:var(--status-continued-border)] px-2 py-0.5 rounded-full flex items-center gap-1">
                 <Check className="w-3 h-3" /> Confirmed
+              </span>
+            )}
+            {result.overridden && (
+              <span className="text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <Pencil className="w-3 h-3" /> Overridden
               </span>
             )}
           </div>
@@ -134,44 +141,92 @@ export function MedCard({ result, onConfirm, onOverride, onDetails }: MedCardPro
 
           {/* Action buttons — hide for auto-confirmed */}
           {!result.autoConfirmed && (
-            <div className="flex flex-wrap gap-2 pt-1">
-              <Button
-                size="sm"
-                variant="outline"
-                className={cn(
-                  "gap-1.5 font-semibold border-2",
-                  result.confirmed
-                    ? "border-[color:var(--status-continued-badge)] text-[color:var(--status-continued-text)] bg-[color:var(--status-continued-bg)]"
-                    : "border-[color:var(--status-continued-badge)] text-[color:var(--status-continued-text)] hover:bg-[color:var(--status-continued-bg)]"
-                )}
-                onClick={() => onConfirm(result.id)}
-                aria-label={`Confirm ${result.drugName}`}
-              >
-                <Check className="w-3.5 h-3.5" />
-                Confirm {cfg.label === "CONTINUED" ? "" : cfg.label.toLowerCase().replace("dose ", "")}
-              </Button>
+            <div className="space-y-3 pt-1">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className={cn(
+                    "gap-1.5 font-semibold border-2",
+                    result.confirmed && !result.overridden
+                      ? "border-[color:var(--status-continued-badge)] text-[color:var(--status-continued-text)] bg-[color:var(--status-continued-bg)]"
+                      : "border-[color:var(--status-continued-badge)] text-[color:var(--status-continued-text)] hover:bg-[color:var(--status-continued-bg)]"
+                  )}
+                  onClick={() => onConfirm(result.id)}
+                  aria-label={`Confirm ${result.drugName}`}
+                  disabled={result.confirmed && !result.overridden}
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  {result.confirmed && !result.overridden ? "Confirmed" : `Confirm ${cfg.label === "CONTINUED" ? "" : cfg.label.toLowerCase().replace("dose ", "")}`}
+                </Button>
 
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5 border-2 border-[color:var(--status-changed-badge)] text-[color:var(--status-changed-text)] hover:bg-[color:var(--status-changed-bg)]"
-                onClick={() => onOverride(result.id)}
-                aria-label={`Override ${result.drugName}`}
-              >
-                <Pencil className="w-3.5 h-3.5" />
-                Override
-              </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className={cn(
+                    "gap-1.5 border-2 border-[color:var(--status-changed-badge)] text-[color:var(--status-changed-text)] hover:bg-[color:var(--status-changed-bg)]",
+                    result.overridden && "bg-[color:var(--status-changed-bg)]"
+                  )}
+                  onClick={() => setShowOverrideForm(!showOverrideForm)}
+                  aria-label={`Override ${result.drugName}`}
+                  disabled={result.overridden}
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  {result.overridden ? "Overridden" : "Override"}
+                </Button>
 
-              <Button
-                size="sm"
-                variant="ghost"
-                className="gap-1.5 text-primary hover:text-primary"
-                onClick={() => onDetails(result.id)}
-                aria-label={`View details for ${result.drugName}`}
-              >
-                <Info className="w-3.5 h-3.5" />
-                Details
-              </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="gap-1.5 text-primary hover:text-primary"
+                  onClick={() => onDetails(result.id)}
+                  aria-label={`View details for ${result.drugName}`}
+                >
+                  <Info className="w-3.5 h-3.5" />
+                  Details
+                </Button>
+              </div>
+
+              {/* Local Override Input Form */}
+              {showOverrideForm && (
+                <div className="p-3 rounded-lg border border-border bg-card space-y-2 mt-2">
+                  <span className="text-xs font-bold text-muted-foreground block">
+                    Reason for overriding AI warning:
+                  </span>
+                  <textarea
+                    placeholder="Enter clinical rationale (e.g. Cardiologist approved, patient tolerating well)"
+                    className="w-full text-sm p-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    rows={2}
+                    value={overrideReason}
+                    onChange={(e) => setOverrideReason(e.target.value)}
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => {
+                        setShowOverrideForm(false);
+                        setOverrideReason("");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      onClick={() => {
+                        if (overrideReason.trim()) {
+                          onOverride(result.id, overrideReason.trim());
+                          setShowOverrideForm(false);
+                        } else {
+                          alert("Please specify a reason.");
+                        }
+                      }}
+                    >
+                      Submit Override
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

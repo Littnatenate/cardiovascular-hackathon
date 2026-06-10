@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { 
   CheckCircle2, 
   Printer, 
@@ -17,12 +17,13 @@ import {
   MessageCircle,
   Copy
 } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { SessionLayout } from "@/components/session-layout"
 import { SessionTopBar } from "@/components/session-top-bar"
 import { Button } from "@/components/ui/button"
 import ReactMarkdown from 'react-markdown'
-import { generateEducation, generateWhatsappSummary, exportPdf } from '@/lib/api'
+import remarkGfm from 'remark-gfm'
+import { generateEducation, generateWhatsappSummary, exportPdf, getSession, updateSession } from '@/lib/api'
 
 const importantReminders = [
   "Don't stop any medication without asking your doctor first.",
@@ -31,15 +32,16 @@ const importantReminders = [
   "If you feel unwell or have any concerns, contact your doctor or visit the clinic.",
 ]
 
-export default function PatientInstructions() {
+function PatientInstructionsContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   
   // -- State variables (Combination of Phase 1 and Phase 8) --
   const [aiInstructions, setAiInstructions] = useState<string>("")
   const [isLoading, setIsLoading] = useState(true)
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
-  const [patientName, setPatientName] = useState("Margaret Thompson")
-  const [patientId, setPatientId] = useState("MRN-002847")
+  const [patientName, setPatientName] = useState("Loading...")
+  const [patientId, setPatientId] = useState("Loading...")
   
   // Phase 8 Multilingual/WhatsApp state
   const [targetLang, setTargetLang] = useState("English")
@@ -48,15 +50,31 @@ export default function PatientInstructions() {
   const [isCopied, setIsCopied] = useState(false)
   const [isExportingPdf, setIsExportingPdf] = useState(false)
 
+  const sessionId = searchParams.get("session_id") || (() => {
+    try {
+      const raw = sessionStorage.getItem("dischargeSession");
+      return raw ? JSON.parse(raw).id : null;
+    } catch (e) { return null; }
+  })();
+
   // 1. Initial Load: Get session data
   useEffect(() => {
+    if (!sessionId) {
+      router.push("/dashboard");
+      return;
+    }
+
     async function loadSession() {
       try {
-        const savedSession = sessionStorage.getItem('dischargeSession')
-        if (savedSession) {
-          const data = JSON.parse(savedSession)
-          setPatientName(data.patientName || "Margaret Thompson")
-          setPatientId(data.id || "MRN-002847")
+        const session = await getSession(sessionId);
+        setPatientName(session.patient_name || "Unknown Patient")
+        setPatientId(session.patient_id || "N/A")
+        
+        if (session.patient_education) {
+          setAiInstructions(session.patient_education);
+        }
+        if (session.whatsapp_summary) {
+          setWhatsappSummary(session.whatsapp_summary);
         }
       } catch (error) {
         console.error("Error loading session:", error)
@@ -65,71 +83,50 @@ export default function PatientInstructions() {
       }
     }
     loadSession()
-  }, [])
+  }, [sessionId, router])
 
   // 2. Action Handlers
   const handlePrint = () => { window.print() }
 
-  const handleDone = () => {
-    // Mark the session as completed in local storage for the dashboard
-    const savedSession = sessionStorage.getItem('dischargeSession');
-    if (savedSession) {
-      try {
-        const sessionData = JSON.parse(savedSession);
-        const sessions = JSON.parse(localStorage.getItem('discharge_sessions') || '[]');
-        
-        // Use the actual recon results to check for discrepancies
-        const rawResults = localStorage.getItem('recon_results');
-        const results = rawResults ? JSON.parse(rawResults) : {};
-        const hasEscalation = Object.values(results).some((r: any) => 
-          r.status === 'discrepancy' || r.status === 'alert' || r.discrepancy === true
-        );
-
-        const updatedSessions = sessions.map((s: any) => {
-          if (s.id === sessionData.id) {
-            return { ...s, status: hasEscalation ? 'escalated' : 'completed' };
-          }
-          return s;
-        });
-        localStorage.setItem('discharge_sessions', JSON.stringify(updatedSessions));
-      } catch (e) {
-        console.error("Failed to update session status", e);
-      }
+  const handleDone = async () => {
+    try {
+      const session = await getSession(sessionId!);
+      const results = session.reconciliation_results || {};
+      
+      // Determine escalation status
+      const hasEscalation = (results.interactions && results.interactions.length > 0) || 
+                            (results.discrepancies && results.discrepancies.length > 0);
+      
+      // Update session status in backend DB
+      const updatedStatus = hasEscalation ? 'escalated' : 'completed';
+      await updateSession(sessionId!, { status: updatedStatus });
+      
+      // Navigate to summary screen
+      router.push(`/session-summary?session_id=${sessionId}`);
+    } catch (e) {
+      console.error("Failed to finalize session status", e);
+      router.push(`/session-summary?session_id=${sessionId}`);
     }
-    router.push('/session-summary')
   }
 
   const handleGenerateAi = async () => {
     setIsGeneratingAi(true)
     try {
-      const rawResults = localStorage.getItem('recon_results')
-      const rawPatient = localStorage.getItem('recon_patient')
-      
-      const results = rawResults ? JSON.parse(rawResults) : {}
-      const patient = rawPatient ? JSON.parse(rawPatient) : {}
-      
-      if (!results || Object.keys(results).length === 0) {
-        setAiInstructions("No reconciliation data found. Please run the AI Comparison first.")
-        return
-      }
-      
-      console.log("[FE] Requesting AI Education...", { results, patient, targetLang, caregiverLang })
-      const educationText = await generateEducation(results, patient, targetLang, caregiverLang)
+      const educationText = await generateEducation(sessionId!, targetLang, caregiverLang)
       setAiInstructions(educationText || "The AI did not return any instructions. Please try again.")
 
-      if (educationText) {
-        // Automatically generate the WhatsApp summary in the background
-        console.log("[FE] Requesting WhatsApp Summary...")
-        try {
-           const waText = await generateWhatsappSummary(educationText, caregiverLang)
-           setWhatsappSummary(waText)
-        } catch (waErr) {
-           console.error("WhatsApp generation failed:", waErr)
+      // Fetch the updated session details to retrieve the WhatsApp summary (which was generated and saved in DB by the backend)
+      try {
+        const session = await getSession(sessionId!);
+        if (session.whatsapp_summary) {
+          setWhatsappSummary(session.whatsapp_summary);
         }
+      } catch (e) {
+        console.error("Failed to load generated whatsapp summary:", e);
       }
     } catch (error) {
       console.error("Failed to generate AI instructions:", error)
-      setAiInstructions("Could not reach AI Nurse. Please rely on the standard medication summary below.")
+      setAiInstructions("Could not reach AI Nurse. Please try again.")
     } finally {
       setIsGeneratingAi(false)
     }
@@ -260,7 +257,7 @@ export default function PatientInstructions() {
                     <ShieldCheck className="size-4" />
                     MedSafe Clinical Verification
                   </div>
-                  <ReactMarkdown>{aiInstructions}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiInstructions}</ReactMarkdown>
                 </div>
 
                 {/* WhatsApp Family Summary - Hidden in print */}
@@ -363,5 +360,13 @@ export default function PatientInstructions() {
         </div>
       </main>
     </SessionLayout>
+  )
+}
+
+export default function PatientInstructions() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading patient instructions...</div>}>
+      <PatientInstructionsContent />
+    </Suspense>
   )
 }

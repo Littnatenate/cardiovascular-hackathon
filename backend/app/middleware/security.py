@@ -64,6 +64,10 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         if not path.startswith("/api/"):
             return await call_next(request)
 
+        # Skip security for CORS preflight requests (OPTIONS never carry API keys)
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         client_ip = request.client.host if request.client else "unknown"
 
         # ── Step 1: IP Whitelisting (Hospital Wifi Check) ──

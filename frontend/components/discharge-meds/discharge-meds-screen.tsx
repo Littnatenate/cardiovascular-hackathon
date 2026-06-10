@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Pill, FileText, Plus, ArrowLeft, ArrowRight, Trash2 } from "lucide-react"
 import { SessionTopBar } from "@/components/session-top-bar"
+import { getSession, updateSession } from "@/lib/api"
 
 // ── Types ──────────────────────────────────────────────────────
 interface Medication {
@@ -22,50 +23,67 @@ function createId() {
 // ── Component ──────────────────────────────────────────────────
 export function DischargeMedsScreen() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [meds, setMeds] = useState<Medication[]>([])
   const [isInitialized, setIsInitialized] = useState(false)
-  const [patientData, setPatientData] = useState({ name: "Sarah Johnson", id: "MRC-2024-0047" })
+  const [patientData, setPatientData] = useState({ name: "Loading...", id: "Loading..." })
 
-  // Load patient data from session (friend's feature)
+  const sessionId = searchParams.get("session_id") || (() => {
+    try {
+      const raw = sessionStorage.getItem("dischargeSession");
+      return raw ? JSON.parse(raw).id : null;
+    } catch (e) { return null; }
+  })();
+
+  // Load patient data and medications from DB on mount
   useEffect(() => {
-    const saved = sessionStorage.getItem("dischargeSession")
-    if (saved) {
-      const data = JSON.parse(saved)
-      setPatientData({
-        name: data.patientName,
-        id: data.id || "MRC-2024-0047"
-      })
+    if (!sessionId) {
+      router.push("/dashboard");
+      return;
     }
-  }, [])
-
-  // Load from localStorage on mount (AI persistence)
-  useEffect(() => {
-    const saved = localStorage.getItem("medrecon_discharge_list")
-    if (saved) {
+    
+    async function fetchSessionData() {
       try {
-        const parsed = JSON.parse(saved);
-        // Sanitize legacy mock data
-        const fixedMeds = parsed.map((m: any, idx: number) => ({
-          ...m,
-          id: m.id || `legacy-discharge-${idx}`,
-          drugName: m.drugName || m.name || "Unknown",
-          source: m.source || "manual",
-          strength: m.strength || "100mg"
-        }));
-        setMeds(fixedMeds);
-      } catch (e) {
-        console.error("Failed to parse saved discharge meds", e)
+        const session = await getSession(sessionId);
+        setPatientData({
+          name: session.patient_name,
+          id: session.id
+        });
+        
+        if (session.discharge_meds) {
+          const parsed = session.discharge_meds;
+          // Sanitize legacy data
+          const fixedMeds = parsed.map((m: any, idx: number) => ({
+            ...m,
+            id: m.id || `legacy-discharge-${idx}`,
+            drugName: m.drugName || m.name || "Unknown",
+            source: m.source || "manual",
+            strength: m.strength || "100mg"
+          }));
+          setMeds(fixedMeds);
+        }
+        setIsInitialized(true);
+      } catch (err) {
+        console.error("Failed to load session details:", err);
       }
     }
-    setIsInitialized(true)
-  }, [])
 
-  // Save to localStorage on change (AI persistence)
+    fetchSessionData();
+  }, [sessionId, router]);
+
+  // Save to DB on change
   useEffect(() => {
-    if (isInitialized) {
-      localStorage.setItem("medrecon_discharge_list", JSON.stringify(meds))
+    if (isInitialized && sessionId) {
+      async function saveDischargeMeds() {
+        try {
+          await updateSession(sessionId, { dischargeMeds: meds });
+        } catch (err) {
+          console.error("Failed to save discharge meds:", err);
+        }
+      }
+      saveDischargeMeds();
     }
-  }, [meds, isInitialized])
+  }, [meds, isInitialized, sessionId]);
 
   const handleUpdate = (id: string, field: keyof Medication, value: string) => {
     setMeds((prev) => prev.map((m) => (m.id === id ? { ...m, [field]: value } : m)))
@@ -189,7 +207,7 @@ export function DischargeMedsScreen() {
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border px-4 py-3 flex gap-3 shadow-lg">
         <button
           type="button"
-          onClick={() => router.push("/home-meds")}
+          onClick={() => router.push(`/home-meds?session_id=${sessionId}`)}
           className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -198,7 +216,7 @@ export function DischargeMedsScreen() {
         <button
           type="button"
           disabled={meds.length === 0}
-          onClick={() => router.push("/medication-review")}
+          onClick={() => router.push(`/medication-review?session_id=${sessionId}`)}
           className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Next: Review

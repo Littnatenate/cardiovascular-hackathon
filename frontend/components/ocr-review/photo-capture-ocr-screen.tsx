@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CameraViewfinder } from "./camera-viewfinder";
 import { PhotoPreview } from "./photo-preview";
 import { ExtractedFieldRow } from "./extracted-field-row";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { scanMedication } from "@/lib/api";
+import { scanMedication, getSession, updateSession } from "@/lib/api";
 import type { CaptureState, ExtractedData, Confidence } from "./types";
 import {
   CheckCircle,
@@ -66,19 +66,43 @@ interface AddedMed {
 
 export function PhotoCaptureOcrScreen() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [captureState, setCaptureState] = useState<CaptureState>("viewfinder");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const [addedMeds, setAddedMeds] = useState<AddedMed[]>([]);
   const [justAdded, setJustAdded] = useState(false);
+  const [capturedImageBase64, setCapturedImageBase64] = useState<string>("");
+
+  const sessionId = searchParams.get("session_id") || (() => {
+    try {
+      const raw = sessionStorage.getItem("dischargeSession");
+      return raw ? JSON.parse(raw).id : null;
+    } catch (e) { return null; }
+  })();
+
+  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setCapturedImageBase64(base64String);
+      setCaptureState("preview");
+    };
+    reader.readAsDataURL(file);
+  }, []);
 
   const handleCapture = useCallback(() => {
+    setCapturedImageBase64("");
     setCaptureState("preview");
   }, []);
 
   const handleRetake = useCallback(() => {
     setCaptureState("viewfinder");
     setExtractedData(null);
+    setCapturedImageBase64("");
   }, []);
 
   const handleUsePhoto = useCallback(async () => {
@@ -86,17 +110,28 @@ export function PhotoCaptureOcrScreen() {
     setCaptureState("reviewing");
     
     try {
-      // Call our real AI OCR backend!
-      const result = await scanMedication("dummy-blob-or-url");
-      // Fallback to mock if API gives nothing, for demo safety
-      setExtractedData(result || MOCK_OCR_RESULT);
+      // Send the real base64 image data or fallback if empty
+      const result = await scanMedication(capturedImageBase64 || "dummy-blob-or-url");
+      
+      // Map OCR results array of objects into the ExtractedData structure
+      if (result && Array.isArray(result) && result.length > 0) {
+        const item = result[0];
+        setExtractedData({
+          drugName: { label: "Drug name", value: item.name || "Unknown", confidence: "high" },
+          strength: { label: "Strength", value: item.dose || "Unknown", confidence: "high" },
+          dosageForm: { label: "Dosage form", value: "Tablet", confidence: "high" },
+          frequency: { label: "Frequency", value: item.frequency || "", confidence: item.frequency ? "high" : "missing", placeholder: "e.g. Once daily" },
+        });
+      } else {
+        setExtractedData(MOCK_OCR_RESULT);
+      }
     } catch (err) {
       console.error("OCR Check failed, falling back to mock:", err);
       setExtractedData(MOCK_OCR_RESULT);
     } finally {
       setIsAnalyzing(false);
     }
-  }, []);
+  }, [capturedImageBase64]);
 
   const handleFieldChange = useCallback(
     (field: keyof ExtractedData, value: string) => {
@@ -107,27 +142,40 @@ export function PhotoCaptureOcrScreen() {
     []
   );
 
-  const handleAddToHomeMeds = useCallback(() => {
-    if (!extractedData) return;
-    const med: AddedMed = {
+  const handleAddToHomeMeds = useCallback(async () => {
+    if (!extractedData || !sessionId) return;
+    const med = {
       id: crypto.randomUUID(),
       drugName: extractedData.drugName.value,
       strength: extractedData.strength.value,
-      dosageForm: extractedData.dosageForm.value,
+      dose: "1 tablet",
       frequency: extractedData.frequency.value,
-      source: "photo",
-      addedAt: new Date(),
+      source: "photo" as const,
     };
     
-    // PERSISTENCE FIX: Save to the main Home Meds list in localStorage
-    const currentMedsRaw = localStorage.getItem('medrecon_home_list');
-    const currentMeds = currentMedsRaw ? JSON.parse(currentMedsRaw) : [];
-    localStorage.setItem('medrecon_home_list', JSON.stringify([...currentMeds, med]));
+    try {
+      const session = await getSession(sessionId);
+      const currentMeds = session.home_meds || [];
+      const updatedMeds = [...currentMeds, med];
+      await updateSession(sessionId, { homeMeds: updatedMeds });
 
-    setAddedMeds((prev) => [med, ...prev]);
-    setJustAdded(true);
-    setTimeout(() => setJustAdded(false), 2000);
-  }, [extractedData]);
+      const addedMed: AddedMed = {
+        id: med.id,
+        drugName: med.drugName,
+        strength: med.strength,
+        dosageForm: extractedData.dosageForm.value || "Tablet",
+        frequency: med.frequency,
+        source: "photo",
+        addedAt: new Date(),
+      };
+      setAddedMeds((prev) => [addedMed, ...prev]);
+      setJustAdded(true);
+      setTimeout(() => setJustAdded(false), 2000);
+    } catch (e) {
+      console.error("Failed to save scanned medication to backend:", e);
+      alert("Failed to save medication to DB. Please ensure backend is running.");
+    }
+  }, [extractedData, sessionId]);
 
   const handleCaptureAnother = useCallback(() => {
     setCaptureState("viewfinder");
@@ -144,7 +192,7 @@ export function PhotoCaptureOcrScreen() {
       {/* Header */}
       <header className="sticky top-0 z-20 flex items-center gap-3 px-4 py-3 bg-card border-b border-border shadow-sm">
         <button
-          onClick={() => router.push('/home-meds')}
+          onClick={() => router.push(`/home-meds?session_id=${sessionId}`)}
           aria-label="Go back"
           className="rounded-lg p-1.5 hover:bg-muted transition-colors"
         >
@@ -181,11 +229,24 @@ export function PhotoCaptureOcrScreen() {
             aria-label="Camera viewfinder"
           >
             {captureState === "viewfinder" && (
-              <CameraViewfinder onCapture={handleCapture} />
+              <div className="relative w-full h-full">
+                <CameraViewfinder onCapture={handleCapture} />
+                <div className="absolute top-4 left-4 z-10">
+                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white text-xs font-medium cursor-pointer border border-white/20 transition-colors">
+                    <span>Upload Image</span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={handleFileUpload} 
+                    />
+                  </label>
+                </div>
+              </div>
             )}
             {captureState === "preview" && (
               <PhotoPreview
-                imageSrc="/lipitor-bottle.jpg"
+                imageSrc={capturedImageBase64 || "/lipitor-bottle.jpg"}
                 onRetake={handleRetake}
                 onUsePhoto={handleUsePhoto}
               />
@@ -376,7 +437,7 @@ export function PhotoCaptureOcrScreen() {
             <Button
               variant="outline"
               className="w-full mt-1 font-semibold"
-              onClick={() => router.push('/home-meds')}
+              onClick={() => router.push(sessionId ? `/home-meds?session_id=${sessionId}` : '/home-meds')}
             >
               Done — Back to Home Meds
             </Button>

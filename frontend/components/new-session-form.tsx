@@ -1,11 +1,11 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { AlertCircle, ArrowRight, CalendarDays, X, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { dischargeSessions } from "@/lib/mock-data"
 import { SessionTopBar } from "@/components/session-top-bar"
+import { createSession, updateSession, getSession } from "@/lib/api"
 
 const WARD_OPTIONS = [
   "Ward 5A – General Medicine",
@@ -28,6 +28,7 @@ interface FormErrors {
 
 export function NewSessionForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const patientNameRef = useRef<HTMLInputElement>(null)
 
   const today = new Date().toISOString().split("T")[0]
@@ -42,25 +43,49 @@ export function NewSessionForm() {
   const [errors, setErrors] = useState<FormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDemo, setIsDemo] = useState(false)
+  const [preloadedHomeMeds, setPreloadedHomeMeds] = useState<any[]>([])
+  const [preloadedDischargeMeds, setPreloadedDischargeMeds] = useState<any[]>([])
+
+  const sessionId = searchParams.get("session_id")
 
   // Auto-focus on the patient name field when the form loads, prefill if session exists
   useEffect(() => {
     patientNameRef.current?.focus()
-    const raw = sessionStorage.getItem('dischargeSession')
-    if (raw) {
-      try {
-        const data = JSON.parse(raw)
-        if (data.patientName) setPatientName(data.patientName)
-        if (data.patientId && data.patientId !== 'N/A') setPatientId(data.patientId)
-        if (data.ward) setWard(data.ward)
-        if (data.bedNumber) setBedNumber(data.bedNumber)
-        if (data.allergies && Array.isArray(data.allergies)) {
-           setAllergies(data.allergies.join(", "))
-           setNoneKnown(data.allergies.length === 0)
+    
+    async function loadPrefill() {
+      if (sessionId) {
+        try {
+          const session = await getSession(sessionId)
+          setPatientName(session.patient_name)
+          setPatientId(session.patient_id)
+          setWard(session.ward || "")
+          setBedNumber(session.bed_number || "")
+          if (session.allergies) {
+            setAllergies(session.allergies.join(", "))
+            setNoneKnown(session.allergies.length === 0)
+          }
+        } catch (e) {
+          console.error("Failed to load session for prefill:", e)
         }
-      } catch (e) {}
+      } else {
+        const raw = sessionStorage.getItem('dischargeSession')
+        if (raw) {
+          try {
+            const data = JSON.parse(raw)
+            if (data.patientName) setPatientName(data.patientName)
+            if (data.patientId && data.patientId !== 'N/A') setPatientId(data.patientId)
+            if (data.ward) setWard(data.ward)
+            if (data.bedNumber) setBedNumber(data.bedNumber)
+            if (data.allergies && Array.isArray(data.allergies)) {
+               setAllergies(data.allergies.join(", "))
+               setNoneKnown(data.allergies.length === 0)
+            }
+          } catch (e) {}
+        }
+      }
     }
-  }, [])
+    loadPrefill()
+  }, [sessionId])
 
   // When "None known" is checked, clear and disable allergy text
   const handleNoneKnown = (checked: boolean) => {
@@ -91,47 +116,50 @@ export function NewSessionForm() {
 
     setIsSubmitting(true)
 
-    // Simulate session creation — replace with real API call
-    await new Promise((r) => setTimeout(r, 400))
+    try {
+      const isEditMode = sessionStorage.getItem("dischargeSession") !== null
+      let savedSession: any = null
+      
+      const payload: any = {
+        patientName: patientName.trim(),
+        patientId: patientId.trim(),
+        ward,
+        bedNumber,
+        allergies: noneKnown ? [] : allergies.split(",").map((a) => a.trim()).filter(Boolean),
+        dischargeDate,
+      }
 
-    // Store session data for use in subsequent screens
-    const sessionDetail = {
-      id: `SESSION-${Date.now()}`,
-      patientName: patientName.trim(),
-      patientId: patientId.trim(),
-      ward,
-      bedNumber,
-      allergies: noneKnown ? [] : allergies.split(",").map((a) => a.trim()).filter(Boolean),
-      dischargeDate,
-      createdAt: new Date().toISOString(),
+      if (isEditMode) {
+        const oldSession = JSON.parse(sessionStorage.getItem("dischargeSession") || "{}")
+        savedSession = await updateSession(oldSession.id, payload)
+      } else {
+        const sessionDetail = {
+          ...payload,
+          id: `SESSION-${Date.now()}`,
+          status: 'in-progress',
+          homeMeds: preloadedHomeMeds,
+          dischargeMeds: preloadedDischargeMeds
+        }
+        savedSession = await createSession(sessionDetail)
+      }
+
+      sessionStorage.setItem("dischargeSession", JSON.stringify({
+        id: savedSession.id,
+        patientName: savedSession.patient_name,
+        patientId: savedSession.patient_id,
+        ward: savedSession.ward,
+        bedNumber: savedSession.bed_number,
+        allergies: savedSession.allergies,
+        dischargeDate: savedSession.discharge_date,
+      }))
+      
+      router.push(`/home-meds?session_id=${savedSession.id}`)
+    } catch (error) {
+      console.error("Failed to save session:", error)
+      alert("Error saving session to server. Please try again.")
+    } finally {
+      setIsSubmitting(false)
     }
-
-    // Clear previous session data for a clean start (if not demo)
-    if (!isDemo) {
-      localStorage.removeItem("medrecon_home_list")
-      localStorage.removeItem("medrecon_discharge_list")
-      localStorage.removeItem("recon_results")
-    }
-
-    sessionStorage.setItem("dischargeSession", JSON.stringify(sessionDetail))
-
-    // Save to dashboard list (friend's feature)
-    const newDashboardSession = {
-      id: sessionDetail.id,
-      patientName: sessionDetail.patientName,
-      status: 'in-progress',
-      updatedAt: new Date(),
-      createdAt: new Date(),
-      mrn: sessionDetail.patientId
-    }
-
-    const saved = localStorage.getItem('medsafe_sessions')
-    const currentSessions = saved ? JSON.parse(saved) : dischargeSessions
-    currentSessions.unshift(newDashboardSession)
-    localStorage.setItem('medsafe_sessions', JSON.stringify(currentSessions))
-
-    // Navigate to the next step (Home Medication entry)
-    router.push('/home-meds')
   }
 
   return (
@@ -184,8 +212,8 @@ export function NewSessionForm() {
                     { id: "d5", drugName: "Metformin", strength: "500mg", dose: "1 tab", frequency: "twice daily", source: "manual" }
                   ];
                   
-                  localStorage.setItem("medrecon_home_list", JSON.stringify(homeMeds));
-                  localStorage.setItem("medrecon_discharge_list", JSON.stringify(dischargeMeds));
+                  setPreloadedHomeMeds(homeMeds);
+                  setPreloadedDischargeMeds(dischargeMeds);
                 }}
               >
                 Load Case: Margaret Thompson (Cardiology)

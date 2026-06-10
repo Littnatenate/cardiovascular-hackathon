@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, ScanSearch, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PatientBanner } from "@/components/med-review/patient-banner"
 import { MedListColumn, type Medication } from "@/components/med-review/med-list-column"
-import { reconcileMedications } from "@/lib/api"
+import { reconcileMedications, getSession } from "@/lib/api"
 import { SessionLayout } from "@/components/session-layout"
 import { SessionTopBar } from "@/components/session-top-bar"
 
@@ -20,52 +20,62 @@ const DEFAULT_PATIENT = {
 
 type ScreenState = "review" | "analyzing" | "done"
 
-export default function PreAnalysisReview() {
+function PreAnalysisReviewContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [screen, setScreen] = useState<ScreenState>("review")
   const [homeMeds, setHomeMeds] = useState<Medication[]>([])
   const [dischargeMeds, setDischargeMeds] = useState<Medication[]>([])
   const [patient, setPatient] = useState(DEFAULT_PATIENT)
 
+  const sessionId = searchParams.get("session_id") || (() => {
+    try {
+      const raw = sessionStorage.getItem("dischargeSession");
+      return raw ? JSON.parse(raw).id : null;
+    } catch (e) { return null; }
+  })();
+
   useEffect(() => {
-    // Load patient data from session (friend's feature)
-    const savedSession = sessionStorage.getItem("dischargeSession")
-    if (savedSession) {
-      const data = JSON.parse(savedSession)
-      setPatient({
-        name: data.patientName,
-        dob: "04/12/1951",
-        mrn: data.patientId || "MRN-002847",
-        allergies: (data.allergies && data.allergies.length > 0) ? data.allergies : ["None Known"],
-        dischargeDate: data.dischargeDate || "Mar 19, 2026",
-      })
+    if (!sessionId) {
+      router.push("/dashboard");
+      return;
     }
 
-    // Load medication lists from localStorage (AI persistence)
-    const rawHome = localStorage.getItem('medrecon_home_list')
-    const rawDischarge = localStorage.getItem('medrecon_discharge_list')
-    
-    if (rawHome) {
-      const parsed = JSON.parse(rawHome)
-      setHomeMeds(parsed.map((m: any) => ({
-        id: m.id,
-        name: m.drugName || m.name,
-        strength: m.strength,
-        frequency: m.frequency,
-        source: m.source
-      })))
-    }
+    async function fetchMeds() {
+      try {
+        const session = await getSession(sessionId);
+        setPatient({
+          name: session.patient_name,
+          dob: "04/12/1951",
+          mrn: session.patient_id || "MRN-002847",
+          allergies: (session.allergies && session.allergies.length > 0) ? session.allergies : ["None Known"],
+          dischargeDate: session.discharge_date || "Mar 19, 2026",
+        });
 
-    if (rawDischarge) {
-      const parsed = JSON.parse(rawDischarge)
-      setDischargeMeds(parsed.map((m: any) => ({
-        id: m.id,
-        name: m.drugName || m.name,
-        strength: m.strength,
-        frequency: m.frequency
-      })))
+        if (session.home_meds) {
+          setHomeMeds(session.home_meds.map((m: any) => ({
+            id: m.id,
+            name: m.drugName || m.name,
+            strength: m.strength,
+            frequency: m.frequency,
+            source: m.source
+          })))
+        }
+
+        if (session.discharge_meds) {
+          setDischargeMeds(session.discharge_meds.map((m: any) => ({
+            id: m.id,
+            name: m.drugName || m.name,
+            strength: m.strength,
+            frequency: m.frequency
+          })))
+        }
+      } catch (err) {
+        console.error("Failed to load review data:", err);
+      }
     }
-  }, [])
+    fetchMeds();
+  }, [sessionId, router])
 
   async function handleRunAnalysis() {
     if (homeMeds.length === 0 || dischargeMeds.length === 0) {
@@ -75,18 +85,10 @@ export default function PreAnalysisReview() {
     
     setScreen("analyzing")
     try {
-      const formattedHome = homeMeds.map(m => ({ name: m.name, dose: m.strength, frequency: m.frequency }))
-      const formattedDischarge = dischargeMeds.map(m => ({ name: m.name, dose: m.strength, frequency: m.frequency }))
-
-      // Pass patient allergies to the AI Safety Engine
-      const allergyList = Array.isArray(patient.allergies) ? patient.allergies : []
-      const results = await reconcileMedications(formattedHome, formattedDischarge, allergyList)
-      
-      localStorage.setItem('recon_results', JSON.stringify(results))
-      localStorage.setItem('recon_patient', JSON.stringify(patient))
+      const results = await reconcileMedications(sessionId!)
       
       setScreen("done")
-      setTimeout(() => router.push('/ai-comparison'), 800)
+      setTimeout(() => router.push(`/ai-comparison?session_id=${sessionId}`), 800)
     } catch (err) {
       console.error("AI Analysis failed:", err)
       setScreen("review")
@@ -122,13 +124,13 @@ export default function PreAnalysisReview() {
             title="Discharge Meds"
             meds={dischargeMeds}
             variant="discharge"
-            onEdit={() => router.push('/discharge-meds')}
+            onEdit={() => router.push(`/discharge-meds?session_id=${sessionId}`)}
           />
           <MedListColumn
             title="Home Meds"
             meds={homeMeds}
             variant="home"
-            onEdit={() => router.push('/home-meds')}
+            onEdit={() => router.push(`/home-meds?session_id=${sessionId}`)}
           />
         </div>
 
@@ -168,5 +170,13 @@ export default function PreAnalysisReview() {
         </div>
       </main>
     </SessionLayout>
+  )
+}
+
+export default function PreAnalysisReview() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading medication review...</div>}>
+      <PreAnalysisReviewContent />
+    </Suspense>
   )
 }

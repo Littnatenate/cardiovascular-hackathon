@@ -5,14 +5,7 @@ from typing import List, Dict, Any
 from app.services.scrubber import scrubber
 from app.services.clinical_rag import rag_engine
 
-# ── Configuration (Model-Agnostic) ──────────
-# Point this to LM Studio (default: http://127.0.0.1:1234/v1)
-LLM_BASE_URL = os.getenv("MEDSAFE_LLM_BASE_URL", "http://127.0.0.1:1234/v1")
-LLM_API_KEY = os.getenv("MEDSAFE_LLM_API_KEY", "lm-studio")
-LLM_MODEL = os.getenv("MEDSAFE_LLM_MODEL", "qwen/qwen3.5-9b")
-
-# Initialize Client
-client = AsyncOpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
+from app.services.llm_client import client, LLM_MODEL, generate_chat_completion
 
 # Prompt Template — Loaded from prompts/education-generation.md
 PROMPT_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "prompts", "education-generation.md")
@@ -57,10 +50,10 @@ async def generate_patient_instructions(
 
     try:
         # 3. Call LLM (OpenAI-compatible)
-        base_prompt = PROMPT_TEMPLATE.replace("{{notes}}", anonymized_context)
+        base_prompt = _load_prompt_template().replace("{{notes}}", anonymized_context)
         prompt = f"{base_prompt}\n\n=== VERIFIED CLINICAL FACTS (DO NOT HALLUCINATE) ===\n{rag_context}\n"
         
-        response = await client.chat.completions.create(
+        response = await generate_chat_completion(
             model=LLM_MODEL,
             messages=[
                 {

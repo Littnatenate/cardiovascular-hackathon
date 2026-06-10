@@ -29,3 +29,18 @@ data/raw/*
 !data/raw/.gitkeep
 data/raw/RxNorm_full_prescribe_03022026/
 data/raw/RxNorm_full_prescribe_03022026.zip
+backend/data/
+
+# Local Node environment
+nodejs/
+node.zip
+
+# Test reports
+frontend/playwright-report/
+frontend/test-results/
+mirofish-engine/
+
+# IDEs & local configurations
+.claude/
+
+

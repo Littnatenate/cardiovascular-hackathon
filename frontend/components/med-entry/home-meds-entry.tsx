@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Medication, MedSource } from "./types";
 import { MedRow } from "./med-row";
 import { AddMedForm } from "./add-med-form";
 import { InputMethodSelector } from "./input-method-selector";
 import { Button } from "@/components/ui/button";
 import { SessionTopBar } from "@/components/session-top-bar";
+import { getSession, updateSession } from "@/lib/api";
 import {
   Empty,
   EmptyMedia,
@@ -29,52 +30,67 @@ const PATIENT_NAME = "Margaret T. Holloway";
 
 export function HomeMedsEntry() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [meds, setMeds] = useState<Medication[]>([]);
   const [activeMethod, setActiveMethod] = useState<MedSource | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [patientData, setPatientData] = useState({ name: PATIENT_NAME, id: SESSION_ID });
+  const [patientData, setPatientData] = useState({ name: "Loading...", id: "Loading..." });
 
-  // Load patient data from session (friend's feature)
+  const sessionId = searchParams.get("session_id") || (() => {
+    try {
+      const raw = sessionStorage.getItem("dischargeSession");
+      return raw ? JSON.parse(raw).id : null;
+    } catch (e) { return null; }
+  })();
+
+  // Load patient data and medications from DB on mount
   useEffect(() => {
-    const saved = sessionStorage.getItem("dischargeSession");
-    if (saved) {
-      const data = JSON.parse(saved);
-      setPatientData({
-        name: data.patientName,
-        id: data.id || SESSION_ID
-      });
+    if (!sessionId) {
+      router.push("/dashboard");
+      return;
     }
-  }, []);
-
-  // Load from localStorage on mount (AI persistence)
-  useEffect(() => {
-    const saved = localStorage.getItem('medrecon_home_list');
-    if (saved) {
+    
+    async function fetchSessionData() {
       try {
-        setMeds(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to parse saved home meds", e);
+        const session = await getSession(sessionId);
+        setPatientData({
+          name: session.patient_name,
+          id: session.id
+        });
+        
+        if (session.home_meds) {
+          setMeds(session.home_meds);
+        }
+        setIsInitialized(true);
+      } catch (err) {
+        console.error("Failed to load session details:", err);
       }
-    } else {
-      setMeds([]);
     }
-    setIsInitialized(true);
-  }, []);
 
-  // Save to localStorage on change (AI persistence)
+    fetchSessionData();
+  }, [sessionId, router]);
+
+  // Save to DB on change
   useEffect(() => {
-    if (isInitialized) {
-      localStorage.setItem('medrecon_home_list', JSON.stringify(meds));
+    if (isInitialized && sessionId) {
+      async function saveHomeMeds() {
+        try {
+          await updateSession(sessionId, { homeMeds: meds });
+        } catch (err) {
+          console.error("Failed to save home meds:", err);
+        }
+      }
+      saveHomeMeds();
     }
-  }, [meds, isInitialized]);
+  }, [meds, isInitialized, sessionId]);
 
   function handleMethodSelect(method: MedSource) {
     setActiveMethod(method);
     if (method === "manual") {
       setShowAddForm(true);
     } else if (method === "photo") {
-      router.push('/photo-capture');
+      router.push(`/photo-capture?session_id=${sessionId}`);
     } else if (method === "admission") {
       const importedMed: Medication = {
         id: crypto.randomUUID(),
@@ -233,7 +249,7 @@ export function HomeMedsEntry() {
         aria-label="Step navigation"
       >
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
-          <Button variant="outline" className="gap-2" size="sm" onClick={() => router.push('/new-session')}>
+          <Button variant="outline" className="gap-2" size="sm" onClick={() => router.push(`/new-session?session_id=${sessionId}`)}>
             <ArrowLeft className="w-4 h-4" />
             <span className="hidden sm:inline">Back</span>
             <span className="sm:hidden">Back</span>
@@ -243,7 +259,7 @@ export function HomeMedsEntry() {
             {meds.length} home med{meds.length !== 1 && "s"} entered
           </div>
 
-          <Button className="gap-2" size="sm" disabled={meds.length === 0} onClick={() => router.push('/discharge-meds')}>
+          <Button className="gap-2" size="sm" disabled={meds.length === 0} onClick={() => router.push(`/discharge-meds?session_id=${sessionId}`)}>
             <span className="hidden sm:inline">Next</span>
             <span className="sm:hidden">Next</span>
             <ArrowRight className="w-4 h-4" />

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { RotateCcw, Check } from "lucide-react";
 
@@ -14,11 +13,10 @@ export function PhotoPreview({ imageSrc, onRetake, onUsePhoto }: PhotoPreviewPro
   return (
     <div className="relative w-full h-full rounded-2xl overflow-hidden bg-foreground flex flex-col">
       <div className="flex-1 relative">
-        <Image
+        <img
           src={imageSrc}
           alt="Captured medication label photo"
-          fill
-          className="object-cover"
+          className="w-full h-full object-cover"
         />
         {/* Subtle overlay */}
         <div className="absolute inset-0 bg-foreground/10" />
