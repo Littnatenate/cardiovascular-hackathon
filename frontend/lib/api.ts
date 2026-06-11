@@ -99,6 +99,18 @@ export async function updateSession(id: string, updates: any) {
   return await response.json();
 }
 
+export async function deleteSession(id: string) {
+  console.log("[API] deleteSession:", id);
+  const response = await fetch(`${API_BASE_URL}/sessions/${id}`, {
+    method: "DELETE",
+    headers: secureHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to delete session ${id}: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
 // ── Database-backed Actions ──
 
 export async function reconcileMedications(sessionId: string) {

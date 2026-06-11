@@ -6,11 +6,15 @@ import { SessionHeader } from "@/components/session-summary/session-header"
 import { SummaryStats } from "@/components/session-summary/summary-stats"
 import { AuditTimeline, type AuditEvent } from "@/components/session-summary/audit-timeline"
 import { QuickActions } from "@/components/session-summary/quick-actions"
-import { getSession } from "@/lib/api"
+import { getSession, exportPdf } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
+import { Toaster } from "@/components/ui/toaster"
 
 function SessionSummaryPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { toast } = useToast()
+  const [isExporting, setIsExporting] = useState(false)
   const [stats, setStats] = useState({
     totalMedications: 0,
     confirmed: 0,
@@ -23,6 +27,7 @@ function SessionSummaryPageContent() {
   })
   const [patientName, setPatientName] = useState("Patient")
   const [events, setEvents] = useState<AuditEvent[]>([])
+  const [sessionData, setSessionData] = useState<any>(null)
 
   const sessionId = searchParams.get("session_id") || (() => {
     try {
@@ -40,6 +45,7 @@ function SessionSummaryPageContent() {
     async function loadSummaryData() {
       try {
         const session = await getSession(sessionId);
+        setSessionData(session)
         setPatientName(session.patient_name || "Patient");
 
         const results = session.reconciliation_results || {};
@@ -132,6 +138,102 @@ function SessionSummaryPageContent() {
     loadSummaryData();
   }, [sessionId, router])
 
+  // Build markdown summary for PDF export
+  const buildSummaryMarkdown = (): string => {
+    const now = new Date().toLocaleString("en-US", {
+      month: "long", day: "numeric", year: "numeric",
+      hour: "numeric", minute: "2-digit",
+    })
+
+    let md = `# Discharge Session Summary\n\n`
+    md += `**Patient:** ${patientName}  \n`
+    md += `**Session ID:** ${sessionId}  \n`
+    md += `**Date:** ${now}  \n\n`
+
+    // Medication stats
+    md += `## Medication Reconciliation Results\n\n`
+    md += `| Category | Count |\n`
+    md += `|---|---|\n`
+    md += `| Total Medications | ${stats.totalMedications} |\n`
+    md += `| ✅ Confirmed (Unchanged) | ${stats.confirmed} |\n`
+    md += `| 🔄 Changed (Dose/Frequency) | ${stats.changed} |\n`
+    md += `| 🛑 Stopped | ${stats.stopped} |\n`
+    md += `| 💊 Newly Prescribed | ${stats.newMeds} |\n`
+    if (stats.escalated > 0) {
+      md += `| ⚠️ Drug Interactions Flagged | ${stats.escalated} |\n`
+    }
+    md += `\n`
+
+    if (stats.pharmacistEscalation) {
+      md += `> ⚠️ **Pharmacist Escalation Required:** ${stats.escalated} drug interaction(s) were flagged during reconciliation and require pharmacist review before discharge.\n\n`
+    }
+
+    // Medication lists
+    if (sessionData) {
+      const homeMeds = sessionData.home_meds || []
+      const dischargeMeds = sessionData.discharge_meds || []
+
+      if (homeMeds.length > 0) {
+        md += `## Home Medications (Pre-Admission)\n\n`
+        md += `| Medication | Strength | Dose | Frequency |\n`
+        md += `|---|---|---|---|\n`
+        homeMeds.forEach((m: any) => {
+          md += `| ${m.name || m.drug_name || '-'} | ${m.strength || '-'} | ${m.dose || '-'} | ${m.frequency || '-'} |\n`
+        })
+        md += `\n`
+      }
+
+      if (dischargeMeds.length > 0) {
+        md += `## Discharge Medications (Prescribed)\n\n`
+        md += `| Medication | Strength | Dose | Frequency |\n`
+        md += `|---|---|---|---|\n`
+        dischargeMeds.forEach((m: any) => {
+          md += `| ${m.name || m.drug_name || '-'} | ${m.strength || '-'} | ${m.dose || '-'} | ${m.frequency || '-'} |\n`
+        })
+        md += `\n`
+      }
+    }
+
+    // Audit trail
+    md += `## Session Audit Trail\n\n`
+    events.forEach((e) => {
+      md += `- **${e.timestamp}** — ${e.description}`
+      if (e.details) md += ` *(${e.details})*`
+      md += `\n`
+    })
+
+    return md
+  }
+
+  const handleExportPdf = async () => {
+    setIsExporting(true)
+    try {
+      const markdown = buildSummaryMarkdown()
+      const blob = await exportPdf(markdown, patientName)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `MedSafe_Summary_${patientName.replace(/\s+/g, '_')}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast({
+        title: 'PDF Exported',
+        description: 'Session summary has been downloaded as a PDF.',
+      })
+    } catch (err) {
+      console.error("PDF export failed:", err)
+      toast({
+        title: 'Export Failed',
+        description: 'Could not generate PDF. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   const dateTime = new Date().toLocaleString("en-US", {
     month: "long", day: "numeric", year: "numeric",
     hour: "numeric", minute: "2-digit",
@@ -153,11 +255,14 @@ function SessionSummaryPageContent() {
             onViewInstructions={() => router.push(`/patient-instructions?session_id=${sessionId}`)}
             onViewEscalation={() => router.push(`/pharmacist-escalation?session_id=${sessionId}`)}
             onEditSession={() => router.push(`/medication-review?session_id=${sessionId}`)}
-            onExportPdf={() => window.print()}
+            onExportPdf={handleExportPdf}
             hasEscalation={stats.pharmacistEscalation}
+            isExporting={isExporting}
           />
         </div>
       </main>
+
+      <Toaster />
     </div>
   )
 }

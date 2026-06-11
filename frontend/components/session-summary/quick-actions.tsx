@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { FileText, AlertTriangle, Pencil, Download } from "lucide-react"
+import { FileText, AlertTriangle, Pencil, Download, Loader2 } from "lucide-react"
 
 interface QuickActionsProps {
   onViewInstructions: () => void
@@ -10,6 +10,7 @@ interface QuickActionsProps {
   onEditSession: () => void
   onExportPdf: () => void
   hasEscalation: boolean
+  isExporting?: boolean
 }
 
 export function QuickActions({
@@ -17,7 +18,8 @@ export function QuickActions({
   onViewEscalation,
   onEditSession,
   onExportPdf,
-  hasEscalation
+  hasEscalation,
+  isExporting = false,
 }: QuickActionsProps) {
   return (
     <Card>
@@ -38,9 +40,13 @@ export function QuickActions({
             <Pencil className="mr-1.5 h-4 w-4" />
             Edit Session
           </Button>
-          <Button variant="outline" size="sm" onClick={onExportPdf}>
-            <Download className="mr-1.5 h-4 w-4" />
-            Export as PDF
+          <Button variant="outline" size="sm" onClick={onExportPdf} disabled={isExporting}>
+            {isExporting ? (
+              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-1.5 h-4 w-4" />
+            )}
+            {isExporting ? 'Generating PDF...' : 'Export as PDF'}
           </Button>
         </div>
       </CardContent>

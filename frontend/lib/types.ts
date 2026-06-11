@@ -3,6 +3,7 @@ export type SessionStatus = 'in-progress' | 'completed' | 'escalated' | 'draft'
 export interface DischargeSession {
   id: string
   patientName: string
+  mrn?: string
   ward: string
   bed: string
   status: SessionStatus
