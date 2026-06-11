@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { NavigationHeader } from '@/components/navigation-header'
-import { currentNurse } from '@/lib/mock-data'
 import { ThemeProvider } from "@/components/theme-provider"
 import { ScrollToTop } from "@/components/scroll-to-top"
+import { AuthProvider } from "@/lib/auth-context"
 import './globals.css'
 
 const inter = Inter({ 
@@ -55,12 +55,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ScrollToTop />
-          <NavigationHeader nurse={currentNurse} />
-          <main className="flex-1 flex flex-col">
-            {children}
-          </main>
-          <Analytics />
+          <AuthProvider>
+            <ScrollToTop />
+            <NavigationHeader />
+            <main className="flex-1 flex flex-col">
+              {children}
+            </main>
+            <Analytics />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

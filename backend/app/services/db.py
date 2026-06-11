@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import json
+import hashlib
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
@@ -83,6 +84,17 @@ def init_db():
             )
         """)
         
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY,
+                employee_id TEXT UNIQUE NOT NULL,
+                name TEXT NOT NULL,
+                role TEXT NOT NULL,
+                password_hash TEXT NOT NULL
+            )
+        """)
+        
+        
         # Check if database is empty
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM sessions")
@@ -109,6 +121,22 @@ def init_db():
                     json.dumps(session.get("home_meds", [])),
                     json.dumps(session.get("discharge_meds", []))
                 ))
+            conn.commit()
+            
+        cursor.execute("SELECT COUNT(*) FROM users")
+        if cursor.fetchone()[0] == 0:
+            print("[Database] Pre-populating database with initial user...")
+            demo_password_hash = hashlib.sha256("password123".encode()).hexdigest()
+            conn.execute("""
+                INSERT INTO users (id, employee_id, name, role, password_hash) 
+                VALUES (?, ?, ?, ?, ?)
+            """, (
+                "USER-1",
+                "PHARM-8942",
+                "Sarah Jenkins",
+                "Senior Clinical Pharmacist",
+                demo_password_hash
+            ))
             conn.commit()
 
 # Run database setup on module import
@@ -217,3 +245,15 @@ def delete_session(session_id: str) -> bool:
         cursor = conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
         conn.commit()
         return cursor.rowcount > 0
+
+def verify_user_login(employee_id: str, password: str) -> Optional[Dict[str, Any]]:
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "SELECT id, employee_id, name, role FROM users WHERE employee_id = ? AND password_hash = ?", 
+            (employee_id, password_hash)
+        )
+        row = cursor.fetchone()
+        if row:
+            return dict(row)
+        return None

@@ -8,6 +8,24 @@ function secureHeaders(): Record<string, string> {
   };
 }
 
+// ── Auth ──
+
+export async function loginUser(employeeId: string, password: string) {
+  console.log("[API] loginUser:", employeeId);
+  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: "POST",
+    headers: secureHeaders(),
+    body: JSON.stringify({ employee_id: employeeId, password }),
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.detail || "Invalid credentials");
+  }
+  
+  return await response.json();
+}
+
 // ── Session CRUD ──
 
 export async function getSessions() {

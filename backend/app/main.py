@@ -5,6 +5,7 @@ load_env()
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.med_recon import router as med_recon_router
+from app.api.auth import router as auth_router
 from app.middleware.security import SecurityMiddleware
 
 app = FastAPI(title="MedSafe API", docs_url=None, redoc_url=None)  # Disable public docs in production
@@ -24,6 +25,7 @@ app.add_middleware(
 
 # ── Routes ──
 app.include_router(med_recon_router, prefix="/api/v1")
+app.include_router(auth_router, prefix="/api/v1/auth")
 
 @app.get("/")
 async def root():
